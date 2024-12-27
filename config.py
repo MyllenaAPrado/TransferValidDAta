@@ -17,7 +17,7 @@ config = Config({
         "batch_size": 2, #48 20 2
         "learning_rate": 1e-3, #3
         "weight_decay": 1e-2, #3
-        "n_epoch": 40,
+        "n_epoch": 60,
         "patience":60,
         "val_freq": 1,
         "num_avg_val": 1, 
@@ -27,12 +27,12 @@ config = Config({
         "dataset":"VALID",
 
         # model
-        "type": "GATBLiF_VALID",
+        "type": "GATBLiF_VALID_Channel",
         "svPath": "results",
 
         # load & save checkpoint
-        "model_name": "GATBLiF",
-        "type_name": "GATBLiF",
+        "model_name": "GATBLiF_channel",
+        "type_name": "GATBLiF_channel",
         "ckpt_path": "./output/models/",               # directory for saving checkpoint
         "log_path": "./output/log/",
         "log_file": ".log",
