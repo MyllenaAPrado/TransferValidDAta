@@ -12,7 +12,7 @@ import os
 import pandas as pd
 import torch.nn as nn
 from data.win5lid import Win5LID_datset
-from valid2 import VALID_datset
+from data.valid2 import VALID_datset
 from torchvision import transforms
 
 from model.SwinEPIChannel import IntegratedModelV2
