@@ -14,8 +14,8 @@ class VALID_datset(torch.utils.data.Dataset):
         self.transform = transform
         
     def get_paths_score(self, folders, print_folder=False):
-        root='VALIDHor/' #datasetVALID'
-        df = pd.read_csv("passive_scores.csv")
+        root='data/VALIDHor/' #datasetVALID'
+        df = pd.read_csv("data/passive_scores.csv")
         data_dic = {}
         idx=0
                 
