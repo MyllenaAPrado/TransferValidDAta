@@ -45,8 +45,16 @@ def k_folders():
         folders = generate_datasets(name_folders, k=10)
 
     if config.dataset == 'VALID':
-        name_folders = {'I01', 'I02', 'I04', 'I09', 'I10'}
-        
+        #name_folders = {'I01', 'I02', 'I04', 'I09', 'I10'}
+        name_folders = {
+            'I01', 'I02', 'I04', 'I09', 'I10',
+            'I01_horizontal_flip', 'I01_vertical_flip', 'I01_vertical_horizontal_flip',
+            'I02_horizontal_flip', 'I02_vertical_flip', 'I02_vertical_horizontal_flip',
+            'I04_horizontal_flip', 'I04_vertical_flip', 'I04_vertical_horizontal_flip',
+            'I09_horizontal_flip', 'I09_vertical_flip', 'I09_vertical_horizontal_flip',
+            'I10_horizontal_flip', 'I10_vertical_flip', 'I10_vertical_horizontal_flip'
+        }
+
         folders = generate_datasets(name_folders, k=5)
 
     if config.dataset == 'VALID8':

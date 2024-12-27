@@ -7,8 +7,8 @@ import torch.nn as nn
 import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from model.SwinEPI import IntegratedModelV2
-from valid2 import VALID_datset
+from model.SwinEPIChannel import IntegratedModelV2
+from data.valid2 import VALID_datset
 from utils.folders import *
 from config import config
 from scipy.stats import spearmanr, pearsonr
@@ -197,7 +197,8 @@ if __name__ == '__main__':
             
             transform_train=transforms.Compose([
                             transforms.CenterCrop((3360, 512)),
-                            transforms.RandomHorizontalFlip(),
+                            transforms.RandomVerticalFlip(p=0.5),
+                            transforms.RandomHorizontalFlip(p=0.5),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
@@ -240,32 +241,27 @@ if __name__ == '__main__':
         in_channels = 3  # RGB image
         patch_size = 4
         emb_size = 96
-        reduction_ratio = 16
-        swin_window_size = [4,4,4]
+        reduction_ratio = 20
+        swin_window_size = [8,8,4]
         num_heads = [2,2,2]
-        swin_blocks = [2,2,2]
+        swin_blocks = [1,1,1]
 
         # Initialize the model
-        model = IntegratedModelV2(
-            image_size=image_size,
-            in_channels=in_channels,
-            patch_size=patch_size,
-            emb_size=emb_size,
-            reduction_ratio=reduction_ratio,
-            swin_window_size=swin_window_size,
-            num_heads=num_heads,
-            swin_blocks = swin_blocks
-        )
+        model = IntegratedModelV2(image_size=image_size, in_channels=in_channels, 
+                              patch_size=patch_size, emb_size=emb_size, 
+                              reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
+                              num_heads=num_heads, swin_blocks=swin_blocks,
+                              EAM=True, num_stb=3)
 
     
         model = model.to(device)
 
-        ## Create three input tensors, each with shape (1, 3, 224, 224)
-        #input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
-        #flops, params = profile(model, inputs=(input_tensor, device))
 
-        #logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
-        #logging.info('Flops: {} '.format(flops))
+        ## Create three input tensors, each with shape (1, 3, 224, 224)
+        input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
+        flops, params = profile(model, inputs=(input_tensor,))
+        logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
+        logging.info('Flops: {} '.format(flops))
 
         criterion = RMSELoss() 
         optimizer = torch.optim.AdamW(

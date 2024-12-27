@@ -1,2 +1,4 @@
-[20241226 17:44:05 INFO    ] {'batch_size': 2, 'learning_rate': 0.001, 'weight_decay': 0.01, 'n_epoch': 40, 'patience': 60, 'val_freq': 1, 'num_avg_val': 1, 'num_workers': 1, 'dataset': 'VALID', 'type': 'GATBLiF_VALID', 'svPath': 'results', 'model_name': 'GATBLiF', 'type_name': 'GATBLiF', 'ckpt_path': './output/models/GATBLiF\\GATBLiF', 'log_path': './output/log/GATBLiF', 'log_file': 'GATBLiF.log', 'tensorboard_path': './output/tensorboard/GATBLiF\\GATBLiF'}
-[20241226 17:44:06 INFO    ] Running training epoch 1
+[20241227 11:27:51 INFO    ] {'batch_size': 2, 'learning_rate': 0.0001, 'weight_decay': 0.01, 'n_epoch': 60, 'patience': 60, 'val_freq': 1, 'num_avg_val': 1, 'num_workers': 1, 'dataset': 'VALID', 'type': 'GATBLiF_VALID', 'svPath': 'results', 'model_name': 'GATBLiF', 'type_name': 'GATBLiF', 'ckpt_path': './output/models/GATBLiF\\GATBLiF', 'log_path': './output/log/GATBLiF', 'log_file': 'GATBLiF.log', 'tensorboard_path': './output/tensorboard/GATBLiF\\GATBLiF'}
+[20241227 11:27:52 INFO    ] #Params : 4.463277 [M]
+[20241227 11:27:52 INFO    ] Flops: 32994983104.0 
+[20241227 11:27:52 INFO    ] Running training epoch 1

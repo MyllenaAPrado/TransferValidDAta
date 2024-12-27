@@ -15,7 +15,7 @@ config = Config({
 
         # optimization
         "batch_size": 2, #48 20 2
-        "learning_rate": 1e-3, #3
+        "learning_rate": 1e-4, #3
         "weight_decay": 1e-2, #3
         "n_epoch": 60,
         "patience":60,

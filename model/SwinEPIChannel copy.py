@@ -52,15 +52,15 @@ class IntegratedModelV2(nn.Module):
                 EAM, num_stb):
         super(IntegratedModelV2, self).__init__()
         # Step 1: Extract Low Features with Attention
-        #if EAM:
-        #    self.eam = ExtractLowFeaturesWithAttention(in_channels=in_channels, out_channels=in_channels)
-        #else:
-        #    self.eam = nn.Sequential(
-        #        nn.Conv2d(in_channels, 32, kernel_size=3, padding=1),
-        #        nn.BatchNorm2d(32),
-        #        nn.ReLU(),
-        #        nn.Conv2d(32, in_channels, kernel_size=1)
-        #    )
+        if EAM:
+            self.eam = ExtractLowFeaturesWithAttention(in_channels=in_channels, out_channels=in_channels)
+        else:
+            self.eam = nn.Sequential(
+                nn.Conv2d(in_channels, 32, kernel_size=3, padding=1),
+                nn.BatchNorm2d(32),
+                nn.ReLU(),
+                nn.Conv2d(32, in_channels, kernel_size=1)
+            )
 
         self.van = van_b0(pretrained=True)  # Pretrained VAN model (van_b0 or other variant)
 
@@ -68,25 +68,25 @@ class IntegratedModelV2(nn.Module):
         self.num_stb = num_stb
 
         # Step 2: Patch Embedding
-        #self.patch_embedding = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
+        self.patch_embedding = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
         
         # Step 3: Swin Transformer Blocks (First Group, 1 block)
         height = image_size[0] // patch_size
         width = image_size[1] // patch_size
-        #self.swin_blocks_ = nn.ModuleList([
-        #    SwinTransformerBlock(
-        #        dim=emb_size,
-        #        input_resolution=(height, width),
-        #        num_heads=num_heads[0],
-        #        window_size=swin_window_size[0],
-        #        shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
-        #    )
-        #    for i in range(swin_blocks[0])
-        #])
-        #
-        ## Step 4: Single Channel Attention Module
-        #self.cam_1 = CAM(in_channels=emb_size, reduction_ratio=reduction_ratio)
-        emb_size = 32
+        self.swin_blocks_ = nn.ModuleList([
+            SwinTransformerBlock(
+                dim=emb_size,
+                input_resolution=(height, width),
+                num_heads=num_heads[0],
+                window_size=swin_window_size[0],
+                shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
+            )
+            for i in range(swin_blocks[0])
+        ])
+        
+        # Step 4: Single Channel Attention Module
+        self.cam_1 = CAM(in_channels=emb_size, reduction_ratio=reduction_ratio)
+
         self.patch_merging_1 = PatchMerging(emb_size)
         # Step 6: Swin Transformer Blocks (Second Group, 1 block)
         self.swin_blocks_1 = nn.ModuleList([
@@ -134,35 +134,36 @@ class IntegratedModelV2(nn.Module):
     def forward(self, x):
         #print(x.shape)
         # Step 1: Extract Low Features
+        x_eam = self.eam(x)  # Enhance edges: [batch_size, 3, height, width]
         # Step 1.5: Process with VAN in parallel
         van_layer1, _, _, _ = self.van(x)  # Use layer1 from VAN (shape: [batch_size, 32, height/4, width/4])
 
-        #x_eam = self.eam(x)  # Enhance edges: [batch_size, 3, height, width]
-        #x_eam = self.patch_embedding(x_eam)
-        #
-        ## Step 3: First Group of Swin Transformer Blocks
-        #x = rearrange(x_eam, 'b c h w -> b h w c')  # Rearrange for Swin Transformer
-        #for swin_block in self.swin_blocks_:
-        #    x = swin_block(x) 
+        # Resize VAN output to match EAM output spatial dimensions
+        van_layer1_resized = nn.functional.interpolate(van_layer1, size=x_eam.shape[2:], mode='bilinear')
+
+        # Combine EAM and VAN features (e.g., concatenation or summation)
+        x_combined = torch.cat([x_eam, van_layer1_resized], dim=1)  # Concatenate along the channel dimension
+
+
+        # Step 2: Initial Patch Embedding
+        x = self.patch_embedding(x_combined)  # Convert to patches: [batch_size, emb_size, height/patch_size, width/patch_size]
+
+        # Step 3: First Group of Swin Transformer Blocks
+        x = rearrange(x, 'b c h w -> b h w c')  # Rearrange for Swin Transformer
+        for swin_block in self.swin_blocks_:
+            x = swin_block(x) 
 
         if self.num_stb == 2 or self.num_stb ==3:
-            # Step 4: Merge Features from VAN and Swin
-            
-            x_swin = rearrange(x, 'b h w c -> b c h w')  # Rearrange back for merging
-            print(x_swin.shape)
-            print(van_layer1.shape)
+            # Step 4: Channel Attention
+            x = rearrange(x, 'b h w c -> b c h w')  # Rearrange back to [batch_size, emb_size, height, width]
+            x = self.cam_1(x)  # Apply channel attention
+            x = rearrange(x, 'b c h w -> b h w c')  # Rearrange for Swin Transformer
 
-            x_combined = van_layer1 #torch.cat([x_swin, van_layer1], dim=1)  # Concatenate along the channel dimension
-            print(x_combined.shape)
-            # Step 5: Continue with Swin Transformer Blocks 2
-            x = rearrange(x_combined, 'b c h w -> b h w c')            
-            print(x.shape)
             x = self.patch_merging_1(x)
             for swin_block in self.swin_blocks_1:
                 x = swin_block(x)  
 
         if  self.num_stb == 3:
-            # Step 4: Channel Attention
             x = rearrange(x, 'b h w c -> b c h w')  # Rearrange back to [batch_size, emb_size, height, width]
             x = self.cam_2(x)  # Apply channel attention
             x = rearrange(x, 'b c h w -> b h w c')  # Rearrange for Swin Transformer
