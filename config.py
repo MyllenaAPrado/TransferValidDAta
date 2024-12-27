@@ -27,12 +27,12 @@ config = Config({
         "dataset":"VALID",
 
         # model
-        "type": "GATBLiF_VALID_Channel",
+        "type": "GATBLiF_VALID",
         "svPath": "results",
 
         # load & save checkpoint
-        "model_name": "GATBLiF_channel",
-        "type_name": "GATBLiF_channel",
+        "model_name": "GATBLiF",
+        "type_name": "GATBLiF",
         "ckpt_path": "./output/models/",               # directory for saving checkpoint
         "log_path": "./output/log/",
         "log_file": ".log",
