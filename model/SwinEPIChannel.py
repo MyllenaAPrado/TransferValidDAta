@@ -5,7 +5,7 @@ from einops import rearrange
 import torch.nn as nn
 import torchvision.models as models
 import torch.nn.functional as F
-
+from torchvision.models import mobilenet_v3_small
 
 class CAM(nn.Module):
     def __init__(self, in_channels, reduction_ratio=16):
@@ -26,12 +26,8 @@ class CAM(nn.Module):
         attention = self.sigmoid(avg_attention + max_attention).view(b, c, 1, 1)
         return x * attention  # Refine channels by multiplication
 
-from torchvision.models import mobilenet_v3_small
-
-
-
 class IntegratedModelV2(nn.Module):
-    def __init__(self, image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks, num_stb):
+    def __init__(self, image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks, num_stb, size_input):
         super(IntegratedModelV2, self).__init__()
 
         # Load pre-trained MobileNetV3-Small
@@ -40,13 +36,13 @@ class IntegratedModelV2(nn.Module):
 
         # Channel Attention Module
         self.cam = CAM(in_channels=592, reduction_ratio=reduction_ratio)
-
+        
         # Patch embedding
         self.patch_embedding = nn.Conv2d(592, emb_size, kernel_size=patch_size, stride=patch_size)
 
         # Swin Transformer blocks
-        height = 26
-        width = 4
+        height = size_input[0]//patch_size#44
+        width = size_input[1]//patch_size #5
         self.swin_blocks = nn.ModuleList([
             SwinTransformerBlock(
                 dim=emb_size,
@@ -58,7 +54,6 @@ class IntegratedModelV2(nn.Module):
             for i in range(swin_blocks[0])
         ])
 
-        self.cam_1 = CAM(in_channels=emb_size, reduction_ratio=reduction_ratio)
         self.patch_merging_1 = PatchMerging(emb_size)        
         self.swin_blocks_1 = nn.ModuleList([
             SwinTransformerBlock(
@@ -71,40 +66,24 @@ class IntegratedModelV2(nn.Module):
             for i in range(swin_blocks[1])
         ])
     
-        self.cam_2 = CAM(in_channels=2*emb_size, reduction_ratio=reduction_ratio)
-        self.patch_merging_2 = PatchMerging(emb_size*2)
-
-        self.swin_blocks_2 = nn.ModuleList([
-            SwinTransformerBlock(
-                dim=4*emb_size,
-                input_resolution=(height//4, width//4),
-                num_heads=num_heads[2],
-                window_size=swin_window_size[2],
-                shift_size=0 if i % 2 == 0 else swin_window_size[2] // 2
-            )
-            for i in range(swin_blocks[2])
-        ])
-
         # Global pooling and fully connected layers
         self.global_pool = nn.AdaptiveAvgPool2d(1)
         
         self.num_stb = num_stb
         if self.num_stb == 1:
             features = 1
-        elif self.num_stb == 2:
-            features = 2
         else:
-            features = 4
+            features = 2
 
         self.fc = nn.Sequential(
             nn.Linear(features*emb_size, 512),
             nn.ELU(),
             nn.Linear(512, 1)
         )
-
         
         
     def forward(self, x):
+        #print(x.shape)
 
         # Concatenate low and high-level features
         low_features = self.feature_extractor[:2](x)  
@@ -115,11 +94,11 @@ class IntegratedModelV2(nn.Module):
 
         # Apply channel attention
         attended_features = self.cam(combined_features)
+        #print(attended_features.shape)
 
         # Apply patch embedding
         x = self.patch_embedding(attended_features)
-        print(x.shape)
-
+        #print('Swin input:',x.shape)
         # Rearrange for Swin Transformer
         x = rearrange(x, 'b c h w -> b h w c')
 
@@ -127,29 +106,17 @@ class IntegratedModelV2(nn.Module):
         for swin_block in self.swin_blocks:
             x = swin_block(x)
 
-        if self.num_stb == 2 or self.num_stb == 3:
-            
-            x = rearrange(x, 'b h w c -> b c h w')  
-            x = self.cam_1(x)  # Apply channel attention
-            x = rearrange(x, 'b c h w -> b h w c')  
-
+        if self.num_stb == 2:
             x = self.patch_merging_1(x)
             for swin_block in self.swin_blocks_1:
-                x = swin_block(x)  
-
-        if self.num_stb == 3:
-            x = rearrange(x, 'b h w c -> b c h w')  
-            x = self.cam_2(x)  # Apply channel attention
-            x = rearrange(x, 'b c h w -> b h w c') 
-            
-            x = self.patch_merging_2(x)
-            for swin_block in self.swin_blocks_2:
                 x = swin_block(x)  
 
         # Global Pooling and Fully Connected Layer
         x = rearrange(x, 'b h w c -> b c h w')  # Restore to [batch_size, emb_size, height, width]
         x = self.global_pool(x)  # Reduce spatial dimensions to [batch_size, emb_size, 1, 1]
         x = x.view(x.size(0), -1)  # Flatten to [batch_size, emb_size]
+        #print(x.shape)
+
         x = self.fc(x)  # Fully connected output
 
         return x

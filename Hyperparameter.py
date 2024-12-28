@@ -123,38 +123,34 @@ def objective(trial):
 
     #fcc_2 = trial.suggest_categorical('fcc_2', [32, 64, 128, 256, 512])
     
-    image_size = (3360, 512)
+    image_size = (3906, 512)
     in_channels = 3
     patch_size =  trial.suggest_categorical('patch_size', [2, 4, 6, 8])
     emb_size = trial.suggest_categorical('emb_size', [32, 64, 96, 128, 256])
     reduction_ratio = trial.suggest_categorical('reduction_ratio', [8, 12, 16, 20, 24, 32])
 
     swin_window_size = [
-        trial.suggest_categorical('swin_window_size_0', [2, 4, 6, 8]),  # Vary the first element between 2 and 8
-        trial.suggest_categorical('swin_window_size_1', [2, 4, 6, 8]),  # Vary the second element between 2 and 8
-        trial.suggest_categorical('swin_window_size_2', [2, 4, 6, 8])   # Vary the third element between 2 and 8
+        trial.suggest_int('swin_window_size_0', 2,12),  # Vary the first element between 2 and 8
+        trial.suggest_int('swin_window_size_1', 2,12),  # Vary the second element between 2 and 8
     ]
 
     num_heads = [
-        trial.suggest_categorical('num_heads_0', [2, 4, 6]),  # Vary the first element between 2 and 8
-        trial.suggest_categorical('num_heads_1', [2, 4, 6]),  # Vary the second element between 2 and 8
-        trial.suggest_categorical('num_heads_2', [2, 4, 6])   # Vary the third element between 2 and 8
+        trial.suggest_int('num_heads_0', 2,6),  # Vary the first element between 2 and 8
+        trial.suggest_int('num_heads_1', 2,6),  # Vary the second element between 2 and 8
     ]
 
     swin_blocks = [
         trial.suggest_int('swin_blocks_0', 2, 4),  # Vary the first element between 2 and 8
         trial.suggest_int('swin_blocks_1', 2, 4),  # Vary the second element between 2 and 8
-        trial.suggest_int('swin_blocks_2', 2, 6)   # Vary the third element between 2 and 8
     ]
 
-    EAM = trial.suggest_categorical('eam', [True, False])
-    num_stb = trial.suggest_categorical('num_stb', [1, 2, 3])
+    num_stb = trial.suggest_categorical('num_stb', [1, 2])
 
     model = IntegratedModelV2(image_size=image_size, in_channels=in_channels, 
                               patch_size=patch_size, emb_size=emb_size, 
                               reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
-                              num_heads=num_heads, swin_blocks=swin_blocks,
-                              EAM=EAM, num_stb=num_stb)
+                              num_heads=num_heads, swin_blocks=swin_blocks,   
+                              num_stb=num_stb,size_input=(123,16))
     
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay = weight_decay)

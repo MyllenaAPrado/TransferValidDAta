@@ -179,16 +179,17 @@ if __name__ == '__main__':
     for train_folders, val_folder, test_folders in k_folders():
         if dataset == "VALID":
             transform_train=transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),                       
+                            #transforms.CenterCrop((1110, 512)),                       
                             transforms.RandomHorizontalFlip(),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),    
+                            #transforms.CenterCrop((3360, 512)),    
                             transforms.ToTensor()
                         ]) 
-
+            image_size = (5642, 626)  # Input image size #44,5
+            size_input=(177,20)
             
             # data load
             train_dataset = VALID_datset(folders=train_folders, transform=transform_train)        
@@ -198,16 +199,19 @@ if __name__ == '__main__':
         elif (dataset == 'WIN'):
             
             transform_train=transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),
+                            transforms.CenterCrop((3906, 512)),
                             transforms.RandomVerticalFlip(p=0.5),
                             transforms.RandomHorizontalFlip(p=0.5),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),
+                            transforms.CenterCrop((3906, 512)),
                             transforms.ToTensor()
                         ]) 
+            image_size = (3906, 512)  # Input image size    
+            size_input=(123,16)       
+            
 
             # data load
             train_dataset = Win5LID_datset(folders=train_folders, transform=transform_train)        
@@ -217,15 +221,18 @@ if __name__ == '__main__':
         elif (dataset == 'LFDD'):
             
             transform_train=transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),
+                            #transforms.CenterCrop((3360, 512)),
                             transforms.RandomHorizontalFlip(),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),
+                            #transforms.CenterCrop((3360, 512)),
                             transforms.ToTensor()
                         ]) 
+            image_size = (4608, 512)  # Input image size  
+            size_input=(144, 16)         
+            
 
             # data load
             train_dataset = LFDD_datset(folders=train_folders, transform=transform_train)        
@@ -239,29 +246,28 @@ if __name__ == '__main__':
 
         #create model
         # Parameters
-        image_size = (3360, 512)  # Input image size
         in_channels = 3  # RGB image
         patch_size = 4
-        emb_size = 96
+        emb_size = 256
         reduction_ratio = 20
         swin_window_size = [8,8,4]
         num_heads = [2,3,2]
-        swin_blocks = [2,2,2]
+        swin_blocks = [1,2,2]
 
         # Initialize the model
         model = IntegratedModelV2(image_size=image_size, in_channels=in_channels, 
                               patch_size=patch_size, emb_size=emb_size, 
                               reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
                               num_heads=num_heads, swin_blocks=swin_blocks,
-                              num_stb=3)
+                              num_stb=2, size_input= size_input)
     
         model = model.to(device)
 
         ### Create three input tensors, each with shape (1, 3, 224, 224)
-        input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
-        flops, params = profile(model, inputs=(input_tensor,))
-        logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
-        logging.info('Flops: {} '.format(flops))
+        #input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
+        #flops, params = profile(model, inputs=(input_tensor,))
+        #logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
+        #logging.info('Flops: {} '.format(flops))
 
         criterion = RMSELoss() 
         optimizer = torch.optim.AdamW(
