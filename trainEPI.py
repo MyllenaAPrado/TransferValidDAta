@@ -149,7 +149,7 @@ def eval_model(config, epoch, net, criterion, test_loader,device, i):
 
 if __name__ == '__main__':
 
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
     print("device:", device)
 
     config.log_file = config.model_name + ".log"

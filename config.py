@@ -24,14 +24,14 @@ config = Config({
         "num_workers": 1,
         
         # data
-        "dataset":"WIN",
+        "dataset":"LFDD",
 
         # model
-        "type": "MobSwin_Win5",
+        "type": "MobSwin_lfdd",
         "svPath": "results",
 
         # load & save checkpoint
-        "model_name": "MobSwin",
+        "model_name": "MobSwin_lfdd",
         "type_name": "MobSwin",
         "ckpt_path": "./output/models/",               # directory for saving checkpoint
         "log_path": "./output/log/",
