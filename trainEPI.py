@@ -8,7 +8,7 @@ import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from model.SwinEPIChannel import IntegratedModelV2
-from data.valid import VALID_datset
+from data.valid2 import VALID_datset
 from utils.folders import *
 from config import config
 from scipy.stats import spearmanr, pearsonr
@@ -61,11 +61,10 @@ def train_epoch(epoch, net, criterion, optimizer, train_loader,device):
     
     for data in tqdm(train_loader):
         x_d = data['d_img_org'].to(device)
-        x_mli = data['mli'].to(device)
         labels = data['score'].to(device)
 
         labels = torch.squeeze(labels.type(torch.FloatTensor)).to(device)  
-        pred_d = net(x_d, x_mli)
+        pred_d = net(x_d)
 
         optimizer.zero_grad()
         loss = criterion(torch.squeeze(pred_d), labels)
@@ -101,12 +100,11 @@ def eval_model(config, epoch, net, criterion, test_loader,device, i):
             
             x_d = data['d_img_org'].to(device)  
             labels = data['score'].to(device)
-            x_mli = data['mli'].to(device)
             name = data['name']
 
             labels = torch.squeeze(labels.type(torch.FloatTensor)).to(device)  
             start_time = time.time()
-            pred = net(x_d, x_mli)
+            pred = net(x_d)
             end_time = time.time()
 
             # compute loss
@@ -179,13 +177,13 @@ if __name__ == '__main__':
     for train_folders, val_folder, test_folders in k_folders():
         if dataset == "VALID":
             transform_train=transforms.Compose([
-                            #transforms.CenterCrop((3360, 512)),                       
-                            #transforms.RandomHorizontalFlip(),
-                            #transforms.RandomRotation(15),
+                            transforms.CenterCrop((3360, 512)),                       
+                            transforms.RandomHorizontalFlip(),
+                            transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            #transforms.CenterCrop((3360, 512)),    
+                            transforms.CenterCrop((3360, 512)),    
                             transforms.ToTensor()
                         ]) 
 
@@ -245,25 +243,23 @@ if __name__ == '__main__':
         emb_size = 96
         reduction_ratio = 20
         swin_window_size = [8,8,4]
-        num_heads = [2,2,2]
-        swin_blocks = [1,1,1]
+        num_heads = [2,3,2]
+        swin_blocks = [2,2,2]
 
         # Initialize the model
         model = IntegratedModelV2(image_size=image_size, in_channels=in_channels, 
                               patch_size=patch_size, emb_size=emb_size, 
                               reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
                               num_heads=num_heads, swin_blocks=swin_blocks,
-                              EAM=True, num_stb=3)
-
+                              num_stb=3)
     
         model = model.to(device)
 
-
         ### Create three input tensors, each with shape (1, 3, 224, 224)
-        #input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
-        #flops, params = profile(model, inputs=(input_tensor,))
-        #logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
-        #logging.info('Flops: {} '.format(flops))
+        input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
+        flops, params = profile(model, inputs=(input_tensor,))
+        logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
+        logging.info('Flops: {} '.format(flops))
 
         criterion = RMSELoss() 
         optimizer = torch.optim.AdamW(

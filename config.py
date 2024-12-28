@@ -14,10 +14,10 @@ class Config(dict):
 config = Config({
 
         # optimization
-        "batch_size": 2, #48 20 2
+        "batch_size": 6, #48 20 2
         "learning_rate": 1e-4, #3
         "weight_decay": 1e-2, #3
-        "n_epoch": 60,
+        "n_epoch": 40,
         "patience":60,
         "val_freq": 1,
         "num_avg_val": 1, 
