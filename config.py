@@ -24,15 +24,15 @@ config = Config({
         "num_workers": 1,
         
         # data
-        "dataset":"VALID",
+        "dataset":"WIN",
 
         # model
-        "type": "GATBLiF_VALID",
+        "type": "MobSwin_Win5",
         "svPath": "results",
 
         # load & save checkpoint
-        "model_name": "GATBLiF",
-        "type_name": "GATBLiF",
+        "model_name": "MobSwin",
+        "type_name": "MobSwin",
         "ckpt_path": "./output/models/",               # directory for saving checkpoint
         "log_path": "./output/log/",
         "log_file": ".log",
