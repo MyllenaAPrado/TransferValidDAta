@@ -9,6 +9,8 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from model.SwinEPIChannel import IntegratedModelV2
 from data.valid2 import VALID_datset
+from data.win5lid import Win5LID_datset
+from data.lfdd import LFDD_datset
 from utils.folders import *
 from config import config
 from scipy.stats import spearmanr, pearsonr
@@ -147,7 +149,7 @@ def eval_model(config, epoch, net, criterion, test_loader,device, i):
 
 if __name__ == '__main__':
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     print("device:", device)
 
     config.log_file = config.model_name + ".log"
