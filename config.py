@@ -15,7 +15,7 @@ config = Config({
 
         # optimization
         "batch_size": 6, #48 20 2
-        "learning_rate": 1e-4, #3
+        "learning_rate": 1e-3, #3
         "weight_decay": 1e-2, #3
         "n_epoch": 40,
         "patience":60,
@@ -27,11 +27,11 @@ config = Config({
         "dataset":"VALID",
 
         # model
-        "type": "MobSwin_valid",
+        "type": "valid_MobSwin",
         "svPath": "results",
 
         # load & save checkpoint
-        "model_name": "MobSwin_valid",
+        "model_name": "valid_MobSwin",
         "type_name": "MobSwin",
         "ckpt_path": "./output/models/",               # directory for saving checkpoint
         "log_path": "./output/log/",

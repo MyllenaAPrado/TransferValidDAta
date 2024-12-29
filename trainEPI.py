@@ -247,19 +247,19 @@ if __name__ == '__main__':
         #create model
         # Parameters
         in_channels = 3  # RGB image
-        patch_size = 4
+        patch_size = 8
         emb_size = 256
-        reduction_ratio = 20
-        swin_window_size = [8,8,4]
-        num_heads = [2,3,2]
-        swin_blocks = [1,2,2]
+        reduction_ratio = 16
+        swin_window_size = [3,5]
+        num_heads = [2,4]
+        swin_blocks = [2,4]
 
         # Initialize the model
         model = IntegratedModelV2(image_size=image_size, in_channels=in_channels, 
                               patch_size=patch_size, emb_size=emb_size, 
                               reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
                               num_heads=num_heads, swin_blocks=swin_blocks,
-                              num_stb=2, size_input= size_input)
+                              num_stb=1, size_input= size_input)
     
         model = model.to(device)
 
@@ -269,11 +269,11 @@ if __name__ == '__main__':
         #logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
         #logging.info('Flops: {} '.format(flops))
 
-        criterion = RMSELoss() 
+        criterion = nn.MSELoss() 
         optimizer = torch.optim.AdamW(
             model.parameters(),
             lr=config.learning_rate,
-            weight_decay=0.0001,
+            weight_decay=0.0002,
         )
         # Learning rate scheduler to halve the learning rate every 200 epochs
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
