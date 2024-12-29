@@ -35,10 +35,10 @@ class IntegratedModelV2(nn.Module):
         self.feature_extractor = mobilenet.features
 
         # Channel Attention Module
-        self.cam = CAM(in_channels=592, reduction_ratio=reduction_ratio)
+        self.cam = CAM(in_channels=24, reduction_ratio=reduction_ratio)
         
         # Patch embedding
-        self.patch_embedding = nn.Conv2d(592, emb_size, kernel_size=patch_size, stride=patch_size)
+        self.patch_embedding = nn.Conv2d(24, emb_size, kernel_size=patch_size, stride=patch_size)
 
         # Swin Transformer blocks
         height = size_input[0]//patch_size#44
@@ -86,14 +86,16 @@ class IntegratedModelV2(nn.Module):
         #print(x.shape)
 
         # Concatenate low and high-level features
-        low_features = self.feature_extractor[:2](x)  
-        high_features = self.feature_extractor(x)  
+        features = self.feature_extractor[:3](x) 
+        #print(low_features.shape) 
+        #high_features = self.feature_extractor(x)  
         # Resize low_features to match the spatial size of high_features
-        low_features = F.interpolate(low_features, size=high_features.shape[2:], mode='bilinear', align_corners=False)
-        combined_features = torch.cat([low_features, high_features], dim=1)
+        #low_features = F.interpolate(low_features, size=high_features.shape[2:], mode='bilinear', align_corners=False)
+        #combined_features = torch.cat([low_features, high_features], dim=1)
+        print(features.shape)
 
         # Apply channel attention
-        attended_features = self.cam(combined_features)
+        attended_features = self.cam(features)
         #print(attended_features.shape)
 
         # Apply patch embedding

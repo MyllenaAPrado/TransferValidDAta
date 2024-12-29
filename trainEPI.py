@@ -149,7 +149,7 @@ def eval_model(config, epoch, net, criterion, test_loader,device, i):
 
 if __name__ == '__main__':
 
-    device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("device:", device)
 
     config.log_file = config.model_name + ".log"
@@ -189,7 +189,7 @@ if __name__ == '__main__':
                             transforms.ToTensor()
                         ]) 
             image_size = (5642, 626)  # Input image size #44,5
-            size_input=(177,20)
+            size_input=(706,79)
             
             # data load
             train_dataset = VALID_datset(folders=train_folders, transform=transform_train)        
@@ -210,7 +210,7 @@ if __name__ == '__main__':
                             transforms.ToTensor()
                         ]) 
             image_size = (3906, 512)  # Input image size    
-            size_input=(123,16)       
+            size_input=(489,64)       
             
 
             # data load
@@ -231,7 +231,7 @@ if __name__ == '__main__':
                             transforms.ToTensor()
                         ]) 
             image_size = (4608, 512)  # Input image size  
-            size_input=(144, 16)         
+            size_input=(576, 64)         
             
 
             # data load
@@ -248,18 +248,18 @@ if __name__ == '__main__':
         # Parameters
         in_channels = 3  # RGB image
         patch_size = 8
-        emb_size = 128
+        emb_size = 256 #128
         reduction_ratio = 12 #12
-        swin_window_size = [6,5]
+        swin_window_size = [6,4]
         num_heads = [4,4] #3
-        swin_blocks = [2,4]
+        swin_blocks = [1,1]
 
         # Initialize the model
         model = IntegratedModelV2(image_size=image_size, in_channels=in_channels, 
                               patch_size=patch_size, emb_size=emb_size, 
                               reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
                               num_heads=num_heads, swin_blocks=swin_blocks,
-                              num_stb=1, size_input= size_input)
+                              num_stb=2, size_input= size_input)
     
         model = model.to(device)
 

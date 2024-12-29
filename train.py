@@ -7,7 +7,7 @@ import torch.nn as nn
 import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from model.SwinEPIChannel import IntegratedModelV2
+from TransferValidDAta.model.SwinEPIChannel2Stream import IntegratedModelV2
 from data.valid import VALID_datset
 from utils.folders import *
 from config import config
