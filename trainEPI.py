@@ -7,7 +7,7 @@ import torch.nn as nn
 import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from model.SwinEPIChannel import IntegratedModelV2
+from model.SwinEPIChannel2 import IntegratedModelV2
 from data.valid2 import VALID_datset
 from data.win5lid import Win5LID_datset
 from data.lfdd import LFDD_datset
@@ -149,7 +149,7 @@ def eval_model(config, epoch, net, criterion, test_loader,device, i):
 
 if __name__ == '__main__':
 
-    device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("device:", device)
 
     config.log_file = config.model_name + ".log"
@@ -269,7 +269,7 @@ if __name__ == '__main__':
         #logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
         #logging.info('Flops: {} '.format(flops))
 
-        criterion = nn.MSELoss() 
+        criterion = RMSELoss() 
         optimizer = torch.optim.AdamW(
             model.parameters(),
             lr=config.learning_rate,
