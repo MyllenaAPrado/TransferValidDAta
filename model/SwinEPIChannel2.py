@@ -5,6 +5,7 @@ from einops import rearrange
 import torchvision.models as models
 import torch.nn.functional as F
 from torchvision.models import mobilenet_v3_small
+from timm import create_model
 
 
 class SpatialAttention(nn.Module):
@@ -67,18 +68,16 @@ class IntegratedModelV2(nn.Module):
     def __init__(self, image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks, num_stb, size_input):
         super(IntegratedModelV2, self).__init__()
 
-        # MobileNetV3-Small as feature extractor
+        # Load pre-trained MobileNetV3-Small
         mobilenet = mobilenet_v3_small(pretrained=True)
         self.feature_extractor = mobilenet.features
 
-        # Efficient Channel Attention (ECA)
-        self.eca = ECA(channels=16)  # Shallow features have 16 channels
-
-        # Spatial Attention Module
-        self.spatial_attention = SpatialAttention(kernel_size=7)  # For deeper features
+        # Channel Attention Module
+        self.cam = ECA(channels=48)# (CAM(in_channels=24, reduction_ratio=reduction_ratio))
+        self.spatial = SpatialAttention()
 
         # Patch embedding
-        self.patch_embedding = nn.Conv2d(64, emb_size, kernel_size=patch_size, stride=patch_size)
+        self.patch_embedding = nn.Conv2d(48, emb_size, kernel_size=patch_size, stride=patch_size)
 
         # Swin Transformer blocks
         height = size_input[0]//patch_size#44
@@ -123,24 +122,15 @@ class IntegratedModelV2(nn.Module):
 
 
     def forward(self, x):
-        # Extract shallow and deep features
-        shallow_features = self.feature_extractor[:3](x)  # Early layers
-        deep_features = self.feature_extractor[3:6](shallow_features)   # Later layers
+        # Concatenate low and high-level features
+        features = self.feature_extractor[:8](x) 
+        print(features.shape)
 
-        # Apply ECA to shallow features
-        refined_shallow = self.eca(shallow_features)
-
-        # Apply Spatial Attention to deep features
-        refined_deep = self.spatial_attention(deep_features)
-
-        # Align dimensions (if necessary)
-        refined_shallow = F.interpolate(refined_shallow, size=refined_deep.size()[2:], mode='bilinear', align_corners=False)
-
-        # Fuse the features (concatenate or add)
-        fused_features = torch.cat([refined_shallow, refined_deep], dim=1)
+        # Apply channel attention
+        features = self.cam(features)
 
         # Apply patch embedding
-        x = self.patch_embedding(fused_features)
+        x = self.patch_embedding(features)
 
         # Rearrange for Swin Transformer
         x = rearrange(x, 'b c h w -> b h w c')
@@ -148,6 +138,10 @@ class IntegratedModelV2(nn.Module):
         # Pass through Swin Transformer blocks
         for swin_block in self.swin_blocks:
             x = swin_block(x)
+
+        x = rearrange(x, 'b h w c -> b c h w') 
+        x = self.spatial(x)
+        x = rearrange(x, 'b c h w -> b h w c')
 
         if self.num_stb == 2:
             x = self.patch_merging_1(x)
