@@ -83,15 +83,9 @@ class IntegratedModelV2(nn.Module):
         
         
     def forward(self, x):
-        #print(x.shape)
-
+        
         # Concatenate low and high-level features
         features = self.feature_extractor[:3](x) 
-        #print(low_features.shape) 
-        #high_features = self.feature_extractor(x)  
-        # Resize low_features to match the spatial size of high_features
-        #low_features = F.interpolate(low_features, size=high_features.shape[2:], mode='bilinear', align_corners=False)
-        #combined_features = torch.cat([low_features, high_features], dim=1)
         print(features.shape)
 
         # Apply channel attention
@@ -198,6 +192,12 @@ class IntegratedModelV2(nn.Module):
         
         x = self.extract_features(x)
         #print(x.shape)
+        
+        #print(low_features.shape) 
+        #high_features = self.feature_extractor(x)  
+        # Resize low_features to match the spatial size of high_features
+        #low_features = F.interpolate(low_features, size=high_features.shape[2:], mode='bilinear', align_corners=False)
+        #combined_features = torch.cat([low_features, high_features], dim=1)
 
         x = self.patch_embedding(x) 
         #print(x.shape)

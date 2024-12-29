@@ -82,6 +82,7 @@ class IntegratedModelV2(nn.Module):
         # Swin Transformer blocks
         height = size_input[0]//patch_size#44
         width = size_input[1]//patch_size #5
+        emb_size = 48
         self.swin_blocks = nn.ModuleList([
             SwinTransformerBlock(
                 dim=emb_size,
@@ -104,18 +105,23 @@ class IntegratedModelV2(nn.Module):
             )
             for i in range(swin_blocks[1])
         ])
+        self.patch_merging_2 = PatchMerging(2*emb_size)        
+        self.swin_blocks_2 = nn.ModuleList([
+            SwinTransformerBlock(
+                dim=4*emb_size,
+                input_resolution=(height//4, width//4),
+                num_heads=num_heads[1],
+                window_size=swin_window_size[1],
+                shift_size=0 if i % 2 == 0 else swin_window_size[1] // 2
+            )
+            for i in range(swin_blocks[1])
+        ])
     
         # Global pooling and fully connected layers
         self.global_pool = nn.AdaptiveAvgPool2d(1)
-        
-        self.num_stb = num_stb
-        if self.num_stb == 1:
-            features = 1
-        else:
-            features = 2
 
         self.fc = nn.Sequential(
-            nn.Linear(features*emb_size, 512),
+            nn.Linear(4*emb_size, 512),
             nn.ELU(),
             nn.Linear(512, 1)
         )
@@ -123,17 +129,17 @@ class IntegratedModelV2(nn.Module):
 
     def forward(self, x):
         # Concatenate low and high-level features
-        features = self.feature_extractor[:8](x) 
+        features = self.feature_extractor[:9](x) 
         print(features.shape)
 
         # Apply channel attention
-        features = self.cam(features)
+        #features = self.cam(features)
 
         # Apply patch embedding
-        x = self.patch_embedding(features)
+        #x = self.patch_embedding(features)
 
         # Rearrange for Swin Transformer
-        x = rearrange(x, 'b c h w -> b h w c')
+        x = rearrange(features, 'b c h w -> b h w c')
 
         # Pass through Swin Transformer blocks
         for swin_block in self.swin_blocks:
@@ -143,14 +149,20 @@ class IntegratedModelV2(nn.Module):
         x = self.spatial(x)
         x = rearrange(x, 'b c h w -> b h w c')
 
-        if self.num_stb == 2:
-            x = self.patch_merging_1(x)
-            for swin_block in self.swin_blocks_1:
-                x = swin_block(x)  
+        #if self.num_stb == 2:
+        x = self.patch_merging_1(x)
+        for swin_block in self.swin_blocks_1:
+            x = swin_block(x)  
+        x = self.patch_merging_2(x)
+        for swin_block in self.swin_blocks_2:
+            x = swin_block(x)  
 
         # Global Pooling and Fully Connected Layer
         x = rearrange(x, 'b h w c -> b c h w')  # Restore to [batch_size, emb_size, height, width]
+        print(x.shape)
+
         x = self.global_pool(x)  # Reduce spatial dimensions to [batch_size, emb_size, 1, 1]
+        print(x.shape)
         x = x.view(x.size(0), -1)  # Flatten to [batch_size, emb_size]
         #print(x.shape)
 

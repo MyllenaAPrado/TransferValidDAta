@@ -7,8 +7,10 @@ import torch.nn as nn
 import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from model.SwinEPIChannel2Stream import IntegratedModelV2
-from data.valid import VALID_datset
+from model.EPIPatch import LFIQA
+from data.valid2 import VALID_datset
+from data.win5lid import Win5LID_datset
+from data.lfdd import LFDD_datset
 from utils.folders import *
 from config import config
 from scipy.stats import spearmanr, pearsonr
@@ -61,11 +63,10 @@ def train_epoch(epoch, net, criterion, optimizer, train_loader,device):
     
     for data in tqdm(train_loader):
         x_d = data['d_img_org'].to(device)
-        x_mli = data['mli'].to(device)
         labels = data['score'].to(device)
 
         labels = torch.squeeze(labels.type(torch.FloatTensor)).to(device)  
-        pred_d = net(x_d, x_mli)
+        pred_d = net(x_d)
 
         optimizer.zero_grad()
         loss = criterion(torch.squeeze(pred_d), labels)
@@ -101,12 +102,11 @@ def eval_model(config, epoch, net, criterion, test_loader,device, i):
             
             x_d = data['d_img_org'].to(device)  
             labels = data['score'].to(device)
-            x_mli = data['mli'].to(device)
             name = data['name']
 
             labels = torch.squeeze(labels.type(torch.FloatTensor)).to(device)  
             start_time = time.time()
-            pred = net(x_d, x_mli)
+            pred = net(x_d)
             end_time = time.time()
 
             # compute loss
@@ -179,16 +179,17 @@ if __name__ == '__main__':
     for train_folders, val_folder, test_folders in k_folders():
         if dataset == "VALID":
             transform_train=transforms.Compose([
-                            #transforms.CenterCrop((3360, 512)),                       
-                            #transforms.RandomHorizontalFlip(),
-                            #transforms.RandomRotation(15),
+                            transforms.CenterCrop((3360, 512)),                       
+                            transforms.RandomHorizontalFlip(),
+                            transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            #transforms.CenterCrop((3360, 512)),    
+                            transforms.CenterCrop((3360, 512)),    
                             transforms.ToTensor()
                         ]) 
-
+            image_size = (5642, 626)  # Input image size #44,5
+            size_input=(706,79)
             
             # data load
             train_dataset = VALID_datset(folders=train_folders, transform=transform_train)        
@@ -198,16 +199,19 @@ if __name__ == '__main__':
         elif (dataset == 'WIN'):
             
             transform_train=transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),
+                            transforms.CenterCrop((3906, 512)),
                             transforms.RandomVerticalFlip(p=0.5),
                             transforms.RandomHorizontalFlip(p=0.5),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),
+                            transforms.CenterCrop((3906, 512)),
                             transforms.ToTensor()
                         ]) 
+            image_size = (3906, 512)  # Input image size    
+            size_input=(489,64)       
+            
 
             # data load
             train_dataset = Win5LID_datset(folders=train_folders, transform=transform_train)        
@@ -217,15 +221,18 @@ if __name__ == '__main__':
         elif (dataset == 'LFDD'):
             
             transform_train=transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),
+                            #transforms.CenterCrop((3360, 512)),
                             transforms.RandomHorizontalFlip(),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),
+                            #transforms.CenterCrop((3360, 512)),
                             transforms.ToTensor()
                         ]) 
+            image_size = (4608, 512)  # Input image size  
+            size_input=(576, 64)         
+            
 
             # data load
             train_dataset = LFDD_datset(folders=train_folders, transform=transform_train)        
@@ -239,33 +246,16 @@ if __name__ == '__main__':
 
         #create model
         # Parameters
-        image_size = (3360, 512)  # Input image size
-        in_channels = 3  # RGB image
-        patch_size = 4
-        emb_size = 24
-        reduction_ratio = 20
-        swin_window_size = [8,8,4]
-        num_heads = [2,2,2]
-        swin_blocks = [1,1,1]
-
         # Initialize the model
-        model = IntegratedModelV2(image_size=image_size, in_channels=in_channels, 
-                              patch_size=patch_size, emb_size=emb_size, 
-                              reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
-                              num_heads=num_heads, swin_blocks=swin_blocks,
-                              num_stb=1)
-
+        model = LFIQA()
     
         model = model.to(device)
 
-
         ### Create three input tensors, each with shape (1, 3, 224, 224)
-        tensor1 = torch.randn(1, 3, 2170, 3130).to(device)
-        tensor2 = torch.randn(1, 25, 3, 434, 626).to(device)
         #input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
-        flops, params = profile(model, inputs=(tensor2,tensor1))
-        logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
-        logging.info('Flops: {} '.format(flops))
+        #flops, params = profile(model, inputs=(input_tensor,))
+        #logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
+        #logging.info('Flops: {} '.format(flops))
 
         criterion = RMSELoss() 
         optimizer = torch.optim.AdamW(

@@ -8,146 +8,126 @@ import torchvision.models as models
 from timm.models.registry import register_model
 from timm.models.layers import trunc_normal_
 from timm.models.vision_transformer import _cfg
-from model.VAN import van_b0, van_b1  # Adjust import based on where VAN is defined
+from model.VAN import van_b2, van_b1  # Adjust import based on where VAN is defined
+import math
+import torch.nn.functional as F
 
+class ECA3DLayer(nn.Module):
+    """Constructs a 3D ECA module.
 
-
-class PatchEmbedding(nn.Module):
-    def __init__(
-        self,
-        in_channel: int = 4,
-        embed_dim: int = 768,
-        kernel_size: int = 7,
-        stride: int = 4
-    ):
-        """
-        in_channels: number of the channels in the input volume
-        embed_dim: embedding dimmesion of the patch
-        """
-        super().__init__()
-        self.patch_embeddings = nn.Conv3d(
-            in_channel,
-            embed_dim,
-            kernel_size=kernel_size,
-            stride=stride
-        )
-
-        self.norm = nn.LayerNorm(embed_dim)
-
-    def forward(self, x):
-        # standard embedding patch
-        patches = self.patch_embeddings(x)
-        
-        patches = patches.permute(0, 2, 1, 3, 4)  # Move depth to come before channels: [B, D, C, H, W]
-        B, D, C, H, W = patches.shape
-        patches = patches.reshape(B, D * C, H, W)  # Combine depth and channels: [B, D*C, H, W]
-
-        return patches
-    
-
-
-
-class CAM(nn.Module):
-    def __init__(self, in_channels, reduction_ratio=16):
-        super(CAM, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-        self.fc1 = nn.Linear(in_channels, in_channels // reduction_ratio, bias=False)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(in_channels // reduction_ratio, in_channels, bias=False)
+    Args:
+        channel: Number of channels of the input feature map
+        k_size: Adaptive selection of kernel size
+    """
+    def __init__(self, channel=3, k_size=3):
+        super(ECA3DLayer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool3d(1)  # 3D global average pooling
+        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        b, c, h, w = x.size()
-        avg_pooled = self.avg_pool(x).view(b, c)
-        max_pooled = self.max_pool(x).view(b, c)
-        avg_attention = self.fc2(self.relu(self.fc1(avg_pooled)))
-        max_attention = self.fc2(self.relu(self.fc1(max_pooled)))
-        attention = self.sigmoid(avg_attention + max_attention).view(b, c, 1, 1)
-        return x * attention  # Refine channels by multiplication
+        # Global spatial information descriptor
+        y = self.avg_pool(x)  # Output shape: (B, C, 1, 1, 1)
+
+        # Apply 1D convolution across the channel dimension
+        y = self.conv(y.squeeze(-1).squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1).unsqueeze(-1)
+
+        # Apply sigmoid and scale the input
+        y = self.sigmoid(y)
+        return x * y.expand_as(x)
+
 
 class IntegratedModelV2(nn.Module):
     def __init__(self, image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks,
-                EAM, num_stb):
+                num_stb):
         super(IntegratedModelV2, self).__init__()
-        self.van = van_b0(pretrained=True)  # Pretrained VAN model (van_b0 or other variant)
-        
-        # Calculate height and width after patch embedding
-        height = 434 // patch_size
-        width = 626 // patch_size
 
-        # Patch embedding
-        self.patch_embed = PatchEmbedding(
-            in_channel=in_channels,
-            embed_dim=emb_size,
-            kernel_size=patch_size,
-            stride=patch_size
+        self.conv_down = nn.Conv2d(
+            in_channels=3,
+            out_channels=3,
+            kernel_size=12,
+            stride=12
         )
 
-        print(height // 2, width // 2)
-        # Swin Transformer blocks (first stage)
-        self.swin_blocks_1 = nn.ModuleList([
+        self.van = van_b1(pretrained=True)  # Pretrained VAN model (van_b0 or other variant)     
+        #self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)   
+
+        self.eca = ECA3DLayer()
+
+         # Patch embedding
+        self.patch_embedding = nn.Conv2d(3, 32, kernel_size=48, stride=48)
+
+        self.swin_blocks = nn.ModuleList([
             SwinTransformerBlock(
-                dim=emb_size*6,
-                input_resolution=(height, width),
-                num_heads=num_heads[1],
-                window_size=swin_window_size[1],
-                shift_size=0 if i % 2 == 0 else swin_window_size[1] // 2
+                dim=32,
+                input_resolution=(224, 224),
+                num_heads=2,
+                window_size=swin_window_size[0],
+                shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
             )
-            for i in range(swin_blocks[1])
+            for i in range(1)
         ])
 
-        # Step 4: Single Channel Attention Module
-        #self.cam_2 = CAM(in_channels=2*emb_size, reduction_ratio=reduction_ratio)
-        self.patch_merging_2 = PatchMerging(emb_size*6)
-
-        # Step 6: Swin Transformer Blocks (Second Group, 1 block)
-        self.swin_blocks_2 = nn.ModuleList([
-            SwinTransformerBlock(
-                dim=6*2*emb_size,
-                input_resolution=(height//2, width//2),
-                num_heads=num_heads[2],
-                window_size=swin_window_size[2],
-                shift_size=0 if i % 2 == 0 else swin_window_size[2] // 2
-            )
-            for i in range(swin_blocks[2])
-        ])
-
-        # Step 7: Global Pooling and Fully Connected Layer
-        self.global_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc = nn.Sequential(
-            nn.Linear(6*2*emb_size, 512),
-            nn.ELU(),
-            nn.Linear(512, 1)
+        embed_dim = 64+32
+        # Adaptive head
+        self.head_score = nn.Sequential(
+            nn.Linear(embed_dim, 256),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(256, 1),
+            nn.ReLU()
         )
+        self.head_weight = nn.Sequential(
+            nn.Linear(embed_dim, 256),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(256, 1),
+            nn.Sigmoid()
+        )
+
 
     def forward(self, x_sai, x_mli):
-      
+        #print(x_mli.shape)
+        #print(x_sai.shape)
+        batch, _, _, _,_ =x_sai.shape
+        x_mli=self.conv_down(x_mli)
+        s1,s2,s3,s4 = self.van(x_mli)
+        x_mli=s1
+        #s1 =self.avg_pool(s1)
+        #s2 =self.avg_pool(s2)
+        #s3 =self.avg_pool(s3)
+        #s4 =self.avg_pool(s4)
 
-        print(x_sai.shape)
-        print(x_mli.shape)
-        x_sai = x_sai.permute(0, 2, 1, 3, 4)
-        x = self.patch_embed(x_sai)  # Shape: [batch_size, num_patches, emb_size]
-        x = rearrange(x, 'b c h w -> b h w c')   
-        print(x.shape)
-        # Pass through Swin blocks
-        for block in self.swin_blocks_1:
-            x = block(x)
+        #print(s1.shape)
+        #print(s2.shape)
+        #print(s3.shape)
+        #print(s4.shape)
 
-        print(x.shape)
-        x = self.patch_merging_2(x)
-        print(x.shape)
-        for swin_block in self.swin_blocks_2:
-            x = swin_block(x)  
-        print(x.shape)
 
-        van_layer1, _, _, _ = self.van(x_mli) 
-        print(van_layer1.shape)
+        #print(x_sai.shape)
+        x_sai = self.eca(x_sai)
+        x_sai = x_sai.reshape(batch, 5, 5, 3, 434, 626)  # [batch_size, grid_h, grid_w, channels, height, width]
+        x_sai = x_sai.permute(0, 3, 1, 4, 2, 5)  # [batch_size, channels, grid_h, height, grid_w, width]
+        x_sai = x_sai.reshape(batch, 3, 5 * 434, 5 * 626)  # [batch_size, channels, total_height, total_width]
+        x_sai = self.patch_embedding(x_sai)
+        x_sai = rearrange(x_sai, 'b c h w -> b h w c')
+        # Pass through Swin Transformer blocks
+        for swin_block in self.swin_blocks:
+            x_sai = swin_block(x_sai)
+        #x_sai = rearrange(x_sai, 'b h w c-> b c h w')  
 
-        # Step 7: Global Pooling and Fully Connected Layer
-        x = rearrange(x, 'b h w c -> b c h w')  # Restore to [batch_size, emb_size, height, width]
-        x = self.global_pool(x)  # Reduce spatial dimensions to [batch_size, emb_size, 1, 1]
-        x = x.view(x.size(0), -1)  # Flatten to [batch_size, emb_size]
-        x = self.fc(x)  # Map to [batch_size, 1]
+        #print(x_mli.shape)
+        #print(x_sai.shape)
 
-        return x
+        # Flatten spatial dimensions and concatenate
+        x_sai = rearrange(x_sai, 'b h w c-> b (h w) c')  # Flatten spatial dimensions
+        x_mli = rearrange(x_mli, 'b c h w -> b (h w) c')  # Flatten spatial dimensions
+
+        feats = torch.cat((x_sai, x_mli), dim=-1)  # Concatenate along feature dimension
+
+        # Adaptive head
+        scores = self.head_score(feats)
+        weights = self.head_weight(feats)
+        q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
+
+        return q
