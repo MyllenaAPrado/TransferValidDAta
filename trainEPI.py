@@ -248,10 +248,10 @@ if __name__ == '__main__':
         # Parameters
         in_channels = 3  # RGB image
         patch_size = 8
-        emb_size = 256
-        reduction_ratio = 16
-        swin_window_size = [3,5]
-        num_heads = [2,4]
+        emb_size = 128
+        reduction_ratio = 12 #12
+        swin_window_size = [6,5]
+        num_heads = [4,4] #3
         swin_blocks = [2,4]
 
         # Initialize the model
@@ -273,7 +273,7 @@ if __name__ == '__main__':
         optimizer = torch.optim.AdamW(
             model.parameters(),
             lr=config.learning_rate,
-            weight_decay=0.0002,
+            weight_decay=0.0001,
         )
         # Learning rate scheduler to halve the learning rate every 200 epochs
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
