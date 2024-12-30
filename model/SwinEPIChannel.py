@@ -83,7 +83,7 @@ class IntegratedModelV2(nn.Module):
         
         
     def forward(self, x):
-        
+
         # Concatenate low and high-level features
         features = self.feature_extractor[:3](x) 
         print(features.shape)

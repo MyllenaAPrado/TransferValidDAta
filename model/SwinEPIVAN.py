@@ -105,7 +105,7 @@ class IntegratedModelV2(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.1),
             nn.Linear(256, 1),
-            nn.ReLU()
+            #nn.ReLU()
         )
         self.head_weight = nn.Sequential(
             nn.Linear(embed_dim, 256),
@@ -142,8 +142,6 @@ class IntegratedModelV2(nn.Module):
         #print(x.shape)
 
         scores = self.head_score(x)
-        weights = self.head_weight(x)
-        q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
-
-        return q
+        
+        return scores
     
