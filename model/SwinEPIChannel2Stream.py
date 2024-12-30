@@ -50,7 +50,7 @@ class IntegratedModelV2(nn.Module):
             stride=12
         )
 
-        self.van = van_b1(pretrained=True)  # Pretrained VAN model (van_b0 or other variant)     
+        self.van = van_b1(pretrained=True, num_classes=1)  # Pretrained VAN model (van_b0 or other variant)     
 
         self.eca = ECA3DLayer()
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)

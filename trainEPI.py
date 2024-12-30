@@ -7,7 +7,7 @@ import torch.nn as nn
 import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from model.SwinEPIChannel2 import IntegratedModelV2
+from model.SwinEPIVAN import IntegratedModelV2
 from data.valid2 import VALID_datset
 from data.win5lid import Win5LID_datset
 from data.lfdd import LFDD_datset
@@ -179,13 +179,13 @@ if __name__ == '__main__':
     for train_folders, val_folder, test_folders in k_folders():
         if dataset == "VALID":
             transform_train=transforms.Compose([
-                            #transforms.CenterCrop((1110, 512)),                       
+                            transforms.CenterCrop((3360, 512)),                       
                             transforms.RandomHorizontalFlip(),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            #transforms.CenterCrop((3360, 512)),    
+                            transforms.CenterCrop((3360, 512)),    
                             transforms.ToTensor()
                         ]) 
             image_size = (5642, 626)  # Input image size #44,5
@@ -255,11 +255,12 @@ if __name__ == '__main__':
         swin_blocks = [1,1]
 
         # Initialize the model
-        model = IntegratedModelV2(image_size=image_size, in_channels=in_channels, 
-                              patch_size=patch_size, emb_size=emb_size, 
-                              reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
-                              num_heads=num_heads, swin_blocks=swin_blocks,
-                              num_stb=2, size_input= size_input)
+        model = IntegratedModelV2()
+        #image_size=image_size, in_channels=in_channels, 
+        #patch_size=patch_size, emb_size=emb_size, 
+        #reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
+        #num_heads=num_heads, swin_blocks=swin_blocks,
+        #num_stb=2, size_input= size_input)
     
         model = model.to(device)
 
