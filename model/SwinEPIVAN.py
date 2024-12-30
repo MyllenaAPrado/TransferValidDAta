@@ -56,9 +56,10 @@ class IntegratedModelV2(nn.Module):
         
         self.van = van_b0(pretrained=True) 
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
+        self.eca = ECA(30*256)
 
 
-        embed_dim = 1536
+        embed_dim = 30*256
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, 256),
@@ -78,13 +79,14 @@ class IntegratedModelV2(nn.Module):
     def forward(self, x):
         
         batch_size = x.shape[0]
-        x = x.unfold(2, 512, 512).unfold(3, 512, 512).permute(0, 2, 3, 1, 4, 5).reshape(batch_size, -1, 3, 512, 512)
+        x = x.unfold(2, 224, 224).unfold(3, 224, 224).permute(0, 2, 3, 1, 4, 5).reshape(batch_size, -1, 3, 224, 224)
         print(x.shape)   
         
-        x = x.reshape(batch_size * 6, 3, 512, 512)        
+        x = x.reshape(batch_size * 30, 3, 224, 224)        
         _,_, _ , x = self.van(x)
         print(x.shape)
-        x = x.view(batch_size, 6 * 256, 16, 16)
+        x = x.view(batch_size, 30 * 256, 7, 7)
+        x = self.eca(x)
         x = rearrange(x, 'b c h w-> b (h w) c')  
 
 
