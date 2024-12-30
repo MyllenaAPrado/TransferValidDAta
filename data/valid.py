@@ -30,7 +30,8 @@ class VALID_datset(torch.utils.data.Dataset):
                     else:
                         value = df[file_name.split('_')[0]].sum()/len(df[file_name.split('_')[0]])
                     file_path = os.path.join(root_images,file)
-                    data_dic[idx]= (file_path, value)
+                    data_dic[idx]= (file_path, value, file_name)
+
                     idx+=1
                 break
             else:            
@@ -44,7 +45,8 @@ class VALID_datset(torch.utils.data.Dataset):
                     else:
                         value = df[file_name.split('_')[0]].sum()/len(df[file_name.split('_')[0]])
                     file_path = os.path.join(root_images,file)
-                    data_dic[idx]= (file_path, value)
+                    data_dic[idx]= (file_path, value, file_name)
+
                     idx+=1
 
         return data_dic
@@ -58,7 +60,8 @@ class VALID_datset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
 
-        d_img_path, score = self.dataset_dic.get(idx, 0)
+        d_img_path, score, name = self.dataset_dic.get(idx, 0)           
+
         images = []
         for img in os.listdir(d_img_path):
             if(img == 'mli.png'):
@@ -76,7 +79,8 @@ class VALID_datset(torch.utils.data.Dataset):
         sample = {
             'd_img_org': images,
             'score': score,
-            'mli': mli_img
+            'mli': mli_img,
+            'name': name
         }        
 
         return sample
