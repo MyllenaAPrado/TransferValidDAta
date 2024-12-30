@@ -11,6 +11,7 @@ from timm.models.vision_transformer import _cfg
 from model.VAN import van_b2, van_b1  # Adjust import based on where VAN is defined
 import math
 import torch.nn.functional as F
+from einops.layers.torch import Rearrange
 
 class ECA3DLayer(nn.Module):
     """Constructs a 3D ECA module.
@@ -50,9 +51,10 @@ class IntegratedModelV2(nn.Module):
         )
 
         self.van = van_b1(pretrained=True)  # Pretrained VAN model (van_b0 or other variant)     
-        #self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)   
 
         self.eca = ECA3DLayer()
+        self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
+        self.rerange_layer = Rearrange('b c h w -> b (h w) c')
 
          # Patch embedding
         self.patch_embedding = nn.Conv2d(3, 32, kernel_size=48, stride=48)
@@ -68,7 +70,7 @@ class IntegratedModelV2(nn.Module):
             for i in range(1)
         ])
 
-        embed_dim = 64+32
+        embed_dim = 1056
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, 256),
@@ -91,17 +93,16 @@ class IntegratedModelV2(nn.Module):
         #print(x_sai.shape)
         batch, _, _, _,_ =x_sai.shape
         x_mli=self.conv_down(x_mli)
-        s1,s2,s3,s4 = self.van(x_mli)
-        x_mli=s1
-        #s1 =self.avg_pool(s1)
-        #s2 =self.avg_pool(s2)
-        #s3 =self.avg_pool(s3)
-        #s4 =self.avg_pool(s4)
+        layer1_s, layer2_s, layer3_s, layer4_s = self.van(x_mli)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
+        s1 = self.avg_pool(layer1_s)
+        s2 = self.avg_pool(layer2_s)
+        s3 = self.avg_pool(layer3_s)
+        s4 = self.avg_pool(layer4_s)
 
-        #print(s1.shape)
-        #print(s2.shape)
-        #print(s3.shape)
-        #print(s4.shape)
+        print(s1.shape)
+        print(s2.shape)
+        print(s3.shape)
+        print(s4.shape)
 
 
         #print(x_sai.shape)
@@ -114,18 +115,14 @@ class IntegratedModelV2(nn.Module):
         # Pass through Swin Transformer blocks
         for swin_block in self.swin_blocks:
             x_sai = swin_block(x_sai)
-        #x_sai = rearrange(x_sai, 'b h w c-> b c h w')  
+        x_sai = rearrange(x_sai, 'b h w c-> b c h w')  
+        x_sai = self.avg_pool(x_sai)
+        print(x_mli.shape)
+        print(x_sai.shape)
 
-        #print(x_mli.shape)
-        #print(x_sai.shape)
+        feats = torch.cat((s1, s2, s3, s4, x_sai), dim=1)
+        feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
 
-        # Flatten spatial dimensions and concatenate
-        x_sai = rearrange(x_sai, 'b h w c-> b (h w) c')  # Flatten spatial dimensions
-        x_mli = rearrange(x_mli, 'b c h w -> b (h w) c')  # Flatten spatial dimensions
-
-        feats = torch.cat((x_sai, x_mli), dim=-1)  # Concatenate along feature dimension
-
-        # Adaptive head
         scores = self.head_score(feats)
         weights = self.head_weight(feats)
         q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
