@@ -27,11 +27,11 @@ config = Config({
         "dataset":"VALID",
 
         # model
-        "type": "ECAvalidMobSwin",
+        "type": "ECA4stagevalidMobSwin",
         "svPath": "results",
 
         # load & save checkpoint
-        "model_name": "ECAvalidMobSwin",
+        "model_name": "ECA4stagevalidMobSwin",
         "type_name": "MobSwin",
         "ckpt_path": "./output/models/",               # directory for saving checkpoint
         "log_path": "./output/log/",
