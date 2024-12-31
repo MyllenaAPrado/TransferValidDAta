@@ -88,7 +88,7 @@ class IntegratedModelV2(nn.Module):
             stride=12
         )
 
-        self.van = van_b0(pretrained=True, num_classes=1)  # Pretrained VAN model (van_b0 or other variant)     
+        self.van = van_b0(pretrained=True)  # Pretrained VAN model (van_b0 or other variant)     
         self.deit = create_model('deit_tiny_patch16_224', pretrained=True)
 
         self.save_output = SaveOutput()
@@ -110,12 +110,12 @@ class IntegratedModelV2(nn.Module):
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
 
         # Patch embedding
-        #self.patch_embedding = nn.Conv2d(3, emb_size, kernel_size=patch_size, stride=patch_size)
+        self.patch_embedding = nn.Conv2d(192, 64, kernel_size=4, stride=4)
 
         self.swin_blocks = nn.ModuleList([
             SwinTransformerBlock(
-                dim=192,
-                input_resolution=(5*14, 5*14),
+                dim=64,
+                input_resolution=(14, 14),
                 num_heads=2,
                 window_size=swin_window_size[0],
                 shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
@@ -123,7 +123,7 @@ class IntegratedModelV2(nn.Module):
             for i in range(1)
         ])
 
-        embed_dim = 512
+        embed_dim = 320
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, embed_dim//2),
@@ -158,19 +158,19 @@ class IntegratedModelV2(nn.Module):
         #print(s4.shape)
         #print(x_sai.shape)
 
-        x_sai = x_sai.reshape(batch_size * 25, 3, 224, 224)  
+        x_sai = x_sai.reshape(batch_size * 16, 3, 224, 224)  
         x_sai = self.deit(x_sai)   
         x_sai = self.save_output.outputs[11][:, 1:]
         self.save_output.outputs.clear()   
 
         #print(x_sai.shape)
-        x_sai = x_sai.reshape(batch_size, 25, 196, 192)
-        x_sai = self.eca(x_sai)
+        x_sai = x_sai.reshape(batch_size, 16, 196, 192)
         #print(x_sai.shape)\
-        x_sai = self.eca(x_sai)
-        x_sai = x_sai.reshape(batch_size, 5,5, 14,14, 192)
+        x_sai = x_sai.reshape(batch_size, 4,4, 14,14, 192)
         x_sai = x_sai.permute(0, 3, 1, 4, 2, 5)  # [batch_size, channels, grid_h, height, grid_w, width]
-        x_sai = x_sai.reshape(batch_size, 192, 5 * 14, 5 * 14)  # [batch_size, channels, total_height, total_width]
+        x_sai = x_sai.reshape(batch_size, 192, 4 * 14, 4 * 14)  # [batch_size, channels, total_height, total_width]
+        x_sai = self.patch_embedding(x_sai)
+        x_sai = self.eca(x_sai)
         x_sai = rearrange(x_sai, 'b c h w -> b h w c')
         # Pass through Swin Transformer blocks
         for swin_block in self.swin_blocks:
@@ -179,11 +179,11 @@ class IntegratedModelV2(nn.Module):
         x_sai = self.avg_pool(x_sai)
         #print(x_mli.shape)
         print(x_sai.shape)
-        print(s2.shape)
-        print(s4.shape)
+        #print(s2.shape)
+        #print(s4.shape)
 
 
-        feats = torch.cat((s2, s4, x_sai), dim=1)
+        feats = torch.cat((s4,x_sai), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
 
         scores = self.head_score(feats)

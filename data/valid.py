@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import pandas as pd
 from PIL import Image
+from torchvision import transforms
 
 
 
@@ -18,12 +19,10 @@ class VALID_datset(torch.utils.data.Dataset):
         df = pd.read_csv("data/passive_scores.csv")
         data_dic = {}
         idx=0
-        print('new')
         for folder in folders:
             if folder == 'I':
                 root_images= os.path.join(root,folders)
                 for file in os.listdir(root_images):
-                    print(file)
                     file_name = file.split('.')[0]  
                     if '_' in file_name:
                         value = df[file_name.split('_')[1]].sum()/len(df[file_name.split('_')[1]])
@@ -36,9 +35,7 @@ class VALID_datset(torch.utils.data.Dataset):
                 break
             else:            
                 root_images= os.path.join(root,folder)
-                print(folder)
                 for file in os.listdir(root_images):
-                    print(file)
                     file_name = file.split('.')[0]  
                     if '_' in file_name:
                         value = df[file_name.split('_')[1]].sum()/len(df[file_name.split('_')[1]])
@@ -66,14 +63,16 @@ class VALID_datset(torch.utils.data.Dataset):
         for img in os.listdir(d_img_path):
             if(img == 'mli.png'):
                 mli_img = Image.open(f'{d_img_path}/{img}').convert('RGB')
-                if self.transform:
-                    mli_img = self.transform(mli_img)
+                mli_img= transforms.ToTensor()(mli_img)
+                #if self.transform:
+                #    mli_img = self.transform(mli_img)
 
             else:
-                image = Image.open(f'{d_img_path}/{img}').convert('RGB')
-                if self.transform:
-                    image = self.transform(image)
-                images.append(image)        
+                if '009' not in img:
+                    image = Image.open(f'{d_img_path}/{img}').convert('RGB')
+                    if self.transform:
+                        image = self.transform(image)
+                    images.append(image)        
 
         images = torch.stack(images) 
         sample = {
