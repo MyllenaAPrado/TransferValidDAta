@@ -160,7 +160,7 @@ class OverlapPatchEmbed(nn.Module):
 class VAN(nn.Module):
     def __init__(self, img_size=224, in_chans=3, num_classes=1000, embed_dims=[64, 128, 256, 512],
                 mlp_ratios=[4, 4, 4, 4], drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
-                 depths=[3, 4, 6, 3], num_stages=4, flag=False):
+                 depths=[3, 4, 6, 3], num_stages=3, flag=False):
         super().__init__()
         if flag == False:
             self.num_classes = num_classes
@@ -225,7 +225,7 @@ class VAN(nn.Module):
         B = x.shape[0]
         feature_list = []
 
-        for i in range(self.num_stages):
+        for i in range(3):
             patch_embed = getattr(self, f"patch_embed{i + 1}")
             block = getattr(self, f"block{i + 1}")
             norm = getattr(self, f"norm{i + 1}")
@@ -238,13 +238,13 @@ class VAN(nn.Module):
             x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
             feature_list.append(x)
 
-        return feature_list[0], feature_list[1], feature_list[2], feature_list[3]
+        return feature_list[0], feature_list[1], feature_list[2]#, feature_list[3]
 
     def forward(self, x):
 
-        layer1, layer2, layer3, layer4 = self.forward_features(x)
+        layer1, layer2, layer3 = self.forward_features(x)
 
-        return layer1, layer2, layer3, layer4
+        return layer1, layer2, layer3#, layer4
 
 
 class DWConv(nn.Module):
@@ -282,11 +282,12 @@ def load_model_weights(model, arch, kwargs):
         url=url, map_location="cpu", check_hash=True
     )
     strict = True
+
     if "num_classes" in kwargs and kwargs["num_classes"] != 1000:
         strict = False
         del checkpoint["state_dict"]["head.weight"]
         del checkpoint["state_dict"]["head.bias"]
-    model.load_state_dict(checkpoint["state_dict"], strict=strict)
+    model.load_state_dict(checkpoint["state_dict"], strict=False)
     return model
 
 

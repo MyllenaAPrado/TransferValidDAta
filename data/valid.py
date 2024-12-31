@@ -68,11 +68,11 @@ class VALID_datset(torch.utils.data.Dataset):
                 #    mli_img = self.transform(mli_img)
 
             else:
-                if '009' not in img:
-                    image = Image.open(f'{d_img_path}/{img}').convert('RGB')
-                    if self.transform:
-                        image = self.transform(image)
-                    images.append(image)        
+                #if '009' not in img:
+                image = Image.open(f'{d_img_path}/{img}').convert('RGB')
+                if self.transform:
+                    image = self.transform(image)
+                images.append(image)        
 
         images = torch.stack(images) 
         sample = {
