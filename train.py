@@ -180,6 +180,9 @@ if __name__ == '__main__':
         if dataset == "VALID":
             transform_train=transforms.Compose([
                             transforms.Resize((224,224)),
+                            transforms.RandomVerticalFlip(p=0.5),
+                            transforms.RandomHorizontalFlip(p=0.5),
+                            transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([   
