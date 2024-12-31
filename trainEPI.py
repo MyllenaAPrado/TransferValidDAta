@@ -255,20 +255,20 @@ if __name__ == '__main__':
         swin_blocks = [1,1]
 
         # Initialize the model
-        model = IntegratedModelV2()
-        #image_size=image_size, in_channels=in_channels, 
-        #patch_size=patch_size, emb_size=emb_size, 
-        #reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
-        #num_heads=num_heads, swin_blocks=swin_blocks,
-        #num_stb=2, size_input= size_input)
+        model = IntegratedModelV2(
+                    image_size=image_size, in_channels=in_channels, 
+                    patch_size=patch_size, emb_size=emb_size, 
+                    reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
+                    num_heads=num_heads, swin_blocks=swin_blocks,
+                    num_stb=2, size_input= size_input)
     
         model = model.to(device)
 
         ### Create three input tensors, each with shape (1, 3, 224, 224)
-        #input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
-        #flops, params = profile(model, inputs=(input_tensor,))
-        #logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
-        #logging.info('Flops: {} '.format(flops))
+        input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
+        flops, params = profile(model, inputs=(input_tensor,))
+        logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
+        logging.info('Flops: {} '.format(flops))
 
         criterion = RMSELoss() 
         optimizer = torch.optim.AdamW(

@@ -14,7 +14,6 @@ from einops import rearrange
 from model.Swin3D import SwinTransformer3d
 from timm import create_model
 from torch.nn.parameter import Parameter
-from timm.models.swin_transformer import SwinTransformerBlock, PatchMerging
 
 class SpatialAttention(nn.Module):
     def __init__(self, kernel_size=7):
@@ -34,6 +33,7 @@ class SpatialAttention(nn.Module):
         attention = self.sigmoid(self.conv(concat))  # [B, 1, H, W]
         # Refine the input feature map
         return x * attention
+
 
 class PatchEmbedding(nn.Module):
     def __init__(
@@ -65,6 +65,8 @@ class PatchEmbedding(nn.Module):
         #patches = self.norm(patches)
         return patches
 
+
+
 class eca_layer(nn.Module):
     """Constructs a ECA module.
 
@@ -72,7 +74,7 @@ class eca_layer(nn.Module):
         channel: Number of channels of the input feature map
         k_size: Adaptive selection of kernel size
     """
-    def __init__(self, k_size=3):
+    def __init__(self, channel, k_size=3):
         super(eca_layer, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
@@ -89,6 +91,7 @@ class eca_layer(nn.Module):
         y = self.sigmoid(y)
 
         return x * y.expand_as(x)
+        
 
 class SaveOutput:
     def __init__(self):
@@ -100,10 +103,13 @@ class SaveOutput:
     def clear(self):
         self.outputs = []
 
+
+
 class IntegratedModelV2(nn.Module):
-    def __init__(self,image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks, num_stb, size_input):
+    def __init__(self):
         super(IntegratedModelV2, self).__init__()
         
+        #self.van = van_b0(pretrained=True)  
         self.deit = create_model('deit_tiny_patch16_224', pretrained=True)
 
         self.save_output = SaveOutput()
@@ -118,42 +124,28 @@ class IntegratedModelV2(nn.Module):
                 handle = layer.register_forward_hook(self.save_output)
                 hook_handles.append(handle)
 
-        
-        embed_dim=32
-
-        self.eca = eca_layer()
-        self.patch_embedding = nn.Conv2d(30, emb_size, kernel_size=patch_size, stride=patch_size)
-
-        
-        height = size_input[0]//patch_size#44
-        width = size_input[1]//patch_size #5
-        self.swin_blocks = nn.ModuleList([
-            SwinTransformerBlock(
-                dim=emb_size,
-                input_resolution=(height, width),
-                num_heads=num_heads[0],
-                window_size=swin_window_size[0],
-                shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
-            )
-            for i in range(swin_blocks[0])
-        ])
-
-        self.patch_merging_1 = PatchMerging(emb_size)        
-        self.swin_blocks_1 = nn.ModuleList([
-            SwinTransformerBlock(
-                dim=2*emb_size,
-                input_resolution=(height//2, width//2),
-                num_heads=num_heads[1],
-                window_size=swin_window_size[1],
-                shift_size=0 if i % 2 == 0 else swin_window_size[1] // 2
-            )
-            for i in range(swin_blocks[1])
-        ])
+        patch_size=(2, 4, 4)
+        embed_dim=96
       
-        self.global_pool = nn.AdaptiveAvgPool2d(1)
+        self.swin = nn.ModuleList([
+             SwinTransformer3d(
+                    in_channels=30,
+                    patch_size=patch_size,  # Patch size (time, height, width)
+                    embed_dim=embed_dim,          # Embedding dimension
+                    depths=[1, 1],   # Number of layers in each stage
+                    num_heads=[2, 2],  # Number of attention heads per stage
+                    window_size=[2, 4,4],     # Window size for attention (time, height, width)
+                    mlp_ratio=4.0,             # Ratio of hidden size to embedding size in MLP
+                    num_classes=embed_dim,           # Number of output classes (set to `None` if not for classification)
+                    dropout=0.2,               # Dropout rate
+                    attention_dropout=0.2,     # Dropout rate for attention weights
+                    #stochastic_depth_prob=0.1  # Stochastic depth rate for regularization
+                )
+                for _ in range(1)
+        ])
     
 
-        embed = 512
+        embed = embed_dim *1
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed, 256),
@@ -174,32 +166,11 @@ class IntegratedModelV2(nn.Module):
         self.save_output.outputs.clear()
 
         print(x.shape)
-        x = x.reshape(batch_size, 30, 196, 192)
-        attended_features = self.eca(x)
-        #print(attended_features.shape)
-
-        # Apply patch embedding
-        x = self.patch_embedding(attended_features)
-        #print('Swin input:',x.shape)
-        # Rearrange for Swin Transformer
-        x = rearrange(x, 'b c h w -> b h w c')
-
-        # Pass through Swin Transformer blocks
-        for swin_block in self.swin_blocks:
+        x = x.reshape(batch_size, 30, 14, 14, 192).permute(0,1,4,2,3)
+        for swin_block in self.swin:
             x = swin_block(x)
-
-        x = rearrange(x, 'b h w c -> b c h w')
-        x = self.eca(x)
-        x = rearrange(x, 'b c h w -> b h w c')    
-
-        x = self.patch_merging_1(x)
-        for swin_block in self.swin_blocks_1:
-            x = swin_block(x)  
-
-        # Global Pooling and Fully Connected Layer
-        x = rearrange(x, 'b h w c -> b c h w')  # Restore to [batch_size, emb_size, height, width]
-        x = self.global_pool(x)  # Reduce spatial dimensions to [batch_size, emb_size, 1, 1]
-        x = x.view(x.size(0), -1)  # Flatten to [batch_size, emb_size]
+         
+        print(x.shape)
 
         scores = self.head_score(x)
         print(scores.shape)
