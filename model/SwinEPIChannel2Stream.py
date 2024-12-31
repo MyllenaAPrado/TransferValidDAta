@@ -8,10 +8,14 @@ import torchvision.models as models
 from timm.models.registry import register_model
 from timm.models.layers import trunc_normal_
 from timm.models.vision_transformer import _cfg
-from model.VAN import van_b2, van_b1  # Adjust import based on where VAN is defined
+from model.VAN import van_b0, van_b1  # Adjust import based on where VAN is defined
 import math
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
+from timm import create_model
+from timm.models.vision_transformer import Block
+
+
 
 class ECA3DLayer(nn.Module):
     """Constructs a 3D ECA module.
@@ -37,6 +41,40 @@ class ECA3DLayer(nn.Module):
         y = self.sigmoid(y)
         return x * y.expand_as(x)
 
+class eca_layer(nn.Module):
+    """Constructs a ECA module.
+
+    Args:
+        channel: Number of channels of the input feature map
+        k_size: Adaptive selection of kernel size
+    """
+    def __init__(self, k_size=3):
+        super(eca_layer, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        # feature descriptor on the global spatial information
+        y = self.avg_pool(x)
+
+        # Two different branches of ECA module
+        y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+
+        # Multi-scale information fusion
+        y = self.sigmoid(y)
+
+        return x * y.expand_as(x)
+
+class SaveOutput:
+    def __init__(self):
+        self.outputs = []
+
+    def __call__(self, module, module_in, module_out):
+        self.outputs.append(module_out)
+
+    def clear(self):
+        self.outputs = []
 
 class IntegratedModelV2(nn.Module):
     def __init__(self, image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks,
@@ -50,19 +88,34 @@ class IntegratedModelV2(nn.Module):
             stride=12
         )
 
-        self.van = van_b1(pretrained=True, num_classes=1)  # Pretrained VAN model (van_b0 or other variant)     
+        self.van = van_b0(pretrained=True, num_classes=1)  # Pretrained VAN model (van_b0 or other variant)     
+        self.deit = create_model('deit_tiny_patch16_224', pretrained=True)
 
-        self.eca = ECA3DLayer()
+        self.save_output = SaveOutput()
+
+        # Freeze all layers
+        for param in self.deit.parameters():
+            param.requires_grad = False
+
+        hook_handles = []
+        for layer in self.deit.modules():
+            if isinstance(layer, Block):
+                handle = layer.register_forward_hook(self.save_output)
+                hook_handles.append(handle)
+
+
+        self.eca = eca_layer()
+
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
 
-         # Patch embedding
-        self.patch_embedding = nn.Conv2d(3, 32, kernel_size=48, stride=48)
+        # Patch embedding
+        #self.patch_embedding = nn.Conv2d(3, emb_size, kernel_size=patch_size, stride=patch_size)
 
         self.swin_blocks = nn.ModuleList([
             SwinTransformerBlock(
-                dim=32,
-                input_resolution=(224, 224),
+                dim=192,
+                input_resolution=(5*14, 5*14),
                 num_heads=2,
                 window_size=swin_window_size[0],
                 shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
@@ -70,61 +123,71 @@ class IntegratedModelV2(nn.Module):
             for i in range(1)
         ])
 
-        embed_dim = 1056
+        embed_dim = 512
         # Adaptive head
         self.head_score = nn.Sequential(
-            nn.Linear(embed_dim, 256),
+            nn.Linear(embed_dim, embed_dim//2),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(256, 1),
+            nn.Linear(embed_dim//2, embed_dim),
             nn.ReLU()
         )
         self.head_weight = nn.Sequential(
-            nn.Linear(embed_dim, 256),
+            nn.Linear(embed_dim, embed_dim//2),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(256, 1),
+            nn.Linear(embed_dim//2, 1),
             nn.Sigmoid()
         )
+
+        self.quality = nn.Linear(embed_dim, 1)
 
 
     def forward(self, x_sai, x_mli):
         #print(x_mli.shape)
         #print(x_sai.shape)
-        batch, _, _, _,_ =x_sai.shape
+        batch_size, _, _, _,_ = x_sai.shape
         x_mli=self.conv_down(x_mli)
         layer1_s, layer2_s, layer3_s, layer4_s = self.van(x_mli)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
-        s1 = self.avg_pool(layer1_s)
+        #s1 = self.avg_pool(layer1_s)
         s2 = self.avg_pool(layer2_s)
-        s3 = self.avg_pool(layer3_s)
+        #s3 = self.avg_pool(layer3_s)
         s4 = self.avg_pool(layer4_s)
 
-        print(s1.shape)
-        print(s2.shape)
-        print(s3.shape)
-        print(s4.shape)
+        #print(s2.shape)
+        #print(s4.shape)
+        #print(x_sai.shape)
 
+        x_sai = x_sai.reshape(batch_size * 25, 3, 224, 224)  
+        x_sai = self.deit(x_sai)   
+        x_sai = self.save_output.outputs[11][:, 1:]
+        self.save_output.outputs.clear()   
 
         #print(x_sai.shape)
+        x_sai = x_sai.reshape(batch_size, 25, 196, 192)
         x_sai = self.eca(x_sai)
-        x_sai = x_sai.reshape(batch, 5, 5, 3, 434, 626)  # [batch_size, grid_h, grid_w, channels, height, width]
+        #print(x_sai.shape)\
+        x_sai = self.eca(x_sai)
+        x_sai = x_sai.reshape(batch_size, 5,5, 14,14, 192)
         x_sai = x_sai.permute(0, 3, 1, 4, 2, 5)  # [batch_size, channels, grid_h, height, grid_w, width]
-        x_sai = x_sai.reshape(batch, 3, 5 * 434, 5 * 626)  # [batch_size, channels, total_height, total_width]
-        x_sai = self.patch_embedding(x_sai)
+        x_sai = x_sai.reshape(batch_size, 192, 5 * 14, 5 * 14)  # [batch_size, channels, total_height, total_width]
         x_sai = rearrange(x_sai, 'b c h w -> b h w c')
         # Pass through Swin Transformer blocks
         for swin_block in self.swin_blocks:
             x_sai = swin_block(x_sai)
         x_sai = rearrange(x_sai, 'b h w c-> b c h w')  
         x_sai = self.avg_pool(x_sai)
-        print(x_mli.shape)
+        #print(x_mli.shape)
         print(x_sai.shape)
+        print(s2.shape)
+        print(s4.shape)
 
-        feats = torch.cat((s1, s2, s3, s4, x_sai), dim=1)
+
+        feats = torch.cat((s2, s4, x_sai), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
 
         scores = self.head_score(feats)
         weights = self.head_weight(feats)
         q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
 
-        return q
+        return self.quality(q)

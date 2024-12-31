@@ -179,20 +179,17 @@ if __name__ == '__main__':
     for train_folders, val_folder, test_folders in k_folders():
         if dataset == "VALID":
             transform_train=transforms.Compose([
-                            #transforms.CenterCrop((3360, 512)),                       
-                            #transforms.RandomHorizontalFlip(),
-                            #transforms.RandomRotation(15),
+                            transforms.Resize((224,224)),
                             transforms.ToTensor()
                         ])
-            transform_eval =transforms.Compose([
-                            #transforms.CenterCrop((3360, 512)),    
+            transform_eval =transforms.Compose([   
+                            transforms.Resize((224,224)),
                             transforms.ToTensor()
                         ]) 
-
             
             # data load
             train_dataset = VALID_datset(folders=train_folders, transform=transform_train)        
-            val_dataset = VALID_datset(folders=val_folder, transform=transform_eval)
+            val_dataset = VALID_datset(folders=val_folder, transform=transform_train)
             test_dataset = VALID_datset(folders=test_folders, transform=transform_eval)
 
         elif (dataset == 'WIN'):
@@ -261,8 +258,8 @@ if __name__ == '__main__':
 
         ### Create three input tensors, each with shape (1, 3, 224, 224)
         tensor1 = torch.randn(1, 3, 2170, 3130).to(device)
-        tensor2 = torch.randn(1, 25, 3, 434, 626).to(device)
-        #input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
+        tensor2 = torch.randn(1, 25, 3, 224, 224).to(device)
+        ##input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
         flops, params = profile(model, inputs=(tensor2,tensor1))
         logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
         logging.info('Flops: {} '.format(flops))
