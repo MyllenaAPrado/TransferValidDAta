@@ -60,7 +60,7 @@ class IntegratedModelV2(nn.Module):
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
-        self.conv = nn.Conv2d(in_channels=3072, out_channels=512, kernel_size=1)    
+        self.conv = nn.Conv2d(in_channels=6144, out_channels=512, kernel_size=1)    
 
         embed_dim = 1024
         # Adaptive head
