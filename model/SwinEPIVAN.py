@@ -86,7 +86,11 @@ class IntegratedModelV2(nn.Module):
         
         x = x.reshape(batch_size * 6, 3, 512, 512)     
 
-        _, _, s3, s4 = self.nat(x)    
+        _, s2, s3, s4 = self.nat(x)    
+
+        print(s2.shape)
+        print(s3.shape)
+        print(s4.shape)
 
         x1 = s3.reshape(batch_size, 6, 16, 16, 512).permute(0,1, 4, 2, 3)
         x2 = s4.reshape(batch_size, 6, 16, 16, 512).permute(0,1, 4, 2, 3)
