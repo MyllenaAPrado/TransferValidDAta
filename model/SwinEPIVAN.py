@@ -92,8 +92,8 @@ class IntegratedModelV2(nn.Module):
         print(s3.shape)
         print(s4.shape)
 
-        x1 = s3.reshape(batch_size, 6*512, 16, 16)
-        x2 = s4.reshape(batch_size, 6*512, 16, 16)
+        x1 = s3.reshape(batch_size, 16, 16, 512*6)
+        x2 = s4.reshape(batch_size, 16, 16, 512*6)
 
         x1 = self.eca1(x1)
         x2 = self.eca2(x2)
