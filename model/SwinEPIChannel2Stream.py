@@ -8,12 +8,13 @@ import torchvision.models as models
 from timm.models.registry import register_model
 from timm.models.layers import trunc_normal_
 from timm.models.vision_transformer import _cfg
-from model.VAN import van_b0, van_b1, van_b2  # Adjust import based on where VAN is defined
+from model.VAN import van_b0, van_b1, van_b2, van_b3  # Adjust import based on where VAN is defined
 import math
 import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 from timm import create_model
 from timm.models.vision_transformer import Block
+from model.NAT import nat_mini
 
 
 
@@ -88,22 +89,7 @@ class IntegratedModelV2(nn.Module):
             stride=12
         )
 
-        self.van = van_b2(pretrained=True)  # Pretrained VAN model (van_b0 or other variant)     
-        #self.deit = create_model('deit_tiny_patch16_224', pretrained=True)
-
-        #self.save_output = SaveOutput()
-
-        ## Freeze all layers
-        #for param in self.deit.parameters():
-        #    param.requires_grad = False
-
-        #hook_handles = []
-        #for layer in self.deit.modules():
-        #    if isinstance(layer, Block):
-        #        handle = layer.register_forward_hook(self.save_output)
-        #        hook_handles.append(handle)
-
-
+        self.nat = nat_mini(pretrained=True)  
         self.eca = eca_layer()
 
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
@@ -148,11 +134,11 @@ class IntegratedModelV2(nn.Module):
         #print(x_sai.shape)
         batch_size, _, _, _,_ = x_sai.shape
         x_mli=self.conv_down(x_mli)
-        layer1_s, layer2_s, layer4_s = self.van(x_mli)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
+        s = self.nat(x_mli)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
         #s1 = self.avg_pool(layer1_s)
-        s2 = self.avg_pool(layer2_s)
+        #s2 = self.avg_pool(layer2_s)
         #s3 = self.avg_pool(layer3_s)
-        s4 = self.avg_pool(layer4_s)
+        s4 = self.avg_pool(s)
 
         #print(s2.shape)
         #print(s4.shape)
@@ -181,7 +167,7 @@ class IntegratedModelV2(nn.Module):
         #print(s4.shape)
 
 
-        feats = torch.cat((s2,s4,x_sai), dim=1)
+        feats = torch.cat((s4,x_sai), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
 
         scores = self.head_score(feats)
