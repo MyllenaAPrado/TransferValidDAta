@@ -63,7 +63,7 @@ class VALID_datset(torch.utils.data.Dataset):
         for img in os.listdir(d_img_path):
             if(img == 'mli.png'):
                 mli_img = Image.open(f'{d_img_path}/{img}').convert('RGB')
-                mli_img= transforms.ToTensor()(mli_img)
+                #mli_img= transforms.ToTensor()(mli_img)
                 if self.transform:
                     mli_img = self.transform(mli_img)
 
