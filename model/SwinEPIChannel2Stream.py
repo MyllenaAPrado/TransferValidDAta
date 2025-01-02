@@ -95,8 +95,8 @@ class IntegratedModelV2(nn.Module):
         self.conv_down = nn.Conv2d(
             in_channels=3,
             out_channels=3,
-            kernel_size=12,
-            stride=12
+            kernel_size=6,
+            stride=6
         )
 
         self.nat = nat_mini(pretrained=True)  
