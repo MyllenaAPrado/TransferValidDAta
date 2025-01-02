@@ -135,9 +135,9 @@ class IntegratedModelV2(nn.Module):
         print(s2.shape)
         print(s3.shape)
         print(s4.shape)
-        
-        x1 = self.cam1(x1) * x1
-        x2 = self.cam2(x2) * x2
+
+        x1 = self.cam1(s2) * s2
+        x2 = self.cam2(s4) * s4
         print(x1.shape)
         print(x2.shape)
         x1 = self.avg_pool(x1)
