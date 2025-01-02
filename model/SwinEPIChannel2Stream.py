@@ -15,6 +15,7 @@ from einops.layers.torch import Rearrange
 from timm import create_model
 from timm.models.vision_transformer import Block
 from model.NAT import nat_mini, nat_base
+from model.VAN
 
 
 
@@ -96,7 +97,7 @@ class IntegratedModelV2(nn.Module):
         self.AFE = nn.Conv2d(3, 32, kernel_size=7, stride=7, padding=0, bias=False)
 
 
-        self.nat = nat_base(pretrained=True)  
+        self.nat = van_b2(pretrained=True)  
         self.cam1 = eca_layer()#(in_planes=256, ratio=20)
         self.cam2 = eca_layer()#(in_planes=512, ratio=20)
 
