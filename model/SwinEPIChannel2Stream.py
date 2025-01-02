@@ -19,30 +19,58 @@ from model.VAN import van_b2
 
 
 
-class ECA3DLayer(nn.Module):
-    """Constructs a 3D ECA module.
+class BasicBlockSem(nn.Module):
 
-    Args:
-        channel: Number of channels of the input feature map
-        k_size: Adaptive selection of kernel size
-    """
-    def __init__(self, channel=3, k_size=3):
-        super(ECA3DLayer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool3d(1)  # 3D global average pooling
-        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
+    def __init__(self, in_planes, out_planes, kernel_size, stride, padding):
+        super(BasicBlockSem, self).__init__()
+        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
+        self.bn = nn.BatchNorm2d(out_planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.ca = eca_layer()
+
+    def forward(self, x):
+        out = self.conv(x)
+        out = self.bn(out)
+
+        # Channel Attention Module
+        out = self.ca(out) #* out
+        out = self.relu(out)
+
+        return out
+
+class ChannelAttention(nn.Module):
+    def __init__(self, in_planes, ratio=16):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+
+        self.fc1 = nn.Conv2d(in_planes, in_planes // 16, 1, bias=False)
+        self.fc2 = nn.Conv2d(in_planes // 16, in_planes, 1, bias=False)
+
+        self.relu1 = nn.ReLU()
+
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        # Global spatial information descriptor
-        y = self.avg_pool(x)  # Output shape: (B, C, 1, 1, 1)
+        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
+        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
+        out = avg_out + max_out
+        return self.sigmoid(out)
 
-        # Apply 1D convolution across the channel dimension
-        y = self.conv(y.squeeze(-1).squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1).unsqueeze(-1)
+class AngBranch(nn.Module):
 
-        # Apply sigmoid and scale the input
-        y = self.sigmoid(y)
-        return x * y.expand_as(x)
+    def __init__(self):
+        super(AngBranch, self).__init__()
 
+        self.in_block_sem_1 = BasicBlockSem(32, 64, kernel_size=3, stride=2, padding=1)
+        self.in_block_sem_2 = BasicBlockSem(64, 128, kernel_size=3, stride=2, padding=1)
+        self.gap = nn.AdaptiveAvgPool2d((1, 1))
+
+    def forward(self, x):
+        y1 = self.in_block_sem_1(x)
+        y2 = self.in_block_sem_2(y1)
+        return y1, y2
+    
 class eca_layer(nn.Module):
     """Constructs a ECA module.
 
@@ -68,25 +96,6 @@ class eca_layer(nn.Module):
 
         return x * y.expand_as(x)
 
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-
-        self.fc1 = nn.Conv2d(in_planes, in_planes // 16, 1, bias=False)
-        self.fc2 = nn.Conv2d(in_planes // 16, in_planes, 1, bias=False)
-
-        self.relu1 = nn.ReLU()
-
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
-        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
-        out = avg_out + max_out
-        return self.sigmoid(out)
-
 
 class IntegratedModelV2(nn.Module):
     def __init__(self, image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks,
@@ -95,11 +104,12 @@ class IntegratedModelV2(nn.Module):
 
         self.SFE = nn.Conv2d(3, 3, kernel_size=3, stride=1, dilation=7, padding=7, bias=False)
         self.AFE = nn.Conv2d(3, 32, kernel_size=7, stride=7, padding=0, bias=False)
+        self.AngBranch = AngBranch()
 
 
         self.nat = van_b2(pretrained=True)  
-        self.cam1 = eca_layer()#(in_planes=256, ratio=20)
-        self.cam2 = eca_layer()#(in_planes=512, ratio=20)
+        #self.cam1 = eca_layer()#(in_planes=256, ratio=20)
+        #self.cam2 = eca_layer()#(in_planes=512, ratio=20)
 
 
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
@@ -129,9 +139,7 @@ class IntegratedModelV2(nn.Module):
         x_ang = self.AFE(x_mli)
         #print('ANG', x_ang.shape)
 
-        a1=self.cam1(x_ang)
-        a2=self.cam2(a1)
-        
+        a1, a2 = self.AngBranch(x_ang)
         a1 = self.avg_pool(a1)
         a2 = self.avg_pool(a2)
 
