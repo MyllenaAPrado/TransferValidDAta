@@ -58,6 +58,8 @@ class IntegratedModelV2(nn.Module):
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
+        self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
+
 
     
 
@@ -95,6 +97,8 @@ class IntegratedModelV2(nn.Module):
 
         x1 = self.eca1(x1)
         x2 = self.eca2(x2)
+        x1 = self.avg_pool(x1)
+        x2 = self.avg_pool(x2)
 
         print(x1.shape)
         print(x2.shape)
