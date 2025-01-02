@@ -134,14 +134,14 @@ class IntegratedModelV2(nn.Module):
         #print(x_mli.shape)
         #x_mli = self.conv_down(x_mli)
         x_ang = self.AFE(x_mli)
-        print(x_ang.shape)
+        print('ANG', x_ang.shape)
 
         a1=self.cam1(x_ang)
         a2=self.cam2(a1)
 
 
         x_spa = self.SFE(x_mli)
-        print(x_spa.shape)
+        print('SPA', x_spa.shape)
 
         #print(x_mli.shape)
 

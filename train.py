@@ -260,7 +260,7 @@ if __name__ == '__main__':
 
 
         ### Create three input tensors, each with shape (1, 3, 224, 224)
-        tensor1 = torch.randn(1, 3, 2170, 3130).to(device)
+        tensor1 = torch.randn(1, 3, 224, 224).to(device)
         tensor2 = torch.randn(1, 25, 3, 224, 224).to(device)
         ##input_tensor = torch.randn(1, 3, 3360, 512).to(device)  # Example input tensor
         flops, params = profile(model, inputs=(tensor2,tensor1))
