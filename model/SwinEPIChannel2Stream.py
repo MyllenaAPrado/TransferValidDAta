@@ -116,7 +116,7 @@ class IntegratedModelV2(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
         # Adaptive head
-        embed_dim = 1088
+        embed_dim = 1216
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, 256),
             nn.ReLU(),
