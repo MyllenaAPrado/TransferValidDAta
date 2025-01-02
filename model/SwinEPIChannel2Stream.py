@@ -126,7 +126,7 @@ class IntegratedModelV2(nn.Module):
     def forward(self, x_sai, x_mli):
         
         x_ang = self.AFE(x_mli)
-        print('ANG', x_ang.shape)
+        #print('ANG', x_ang.shape)
 
         a1=self.cam1(x_ang)
         a2=self.cam2(a1)
@@ -141,7 +141,7 @@ class IntegratedModelV2(nn.Module):
         s2 = self.avg_pool(layer2_s)
         s3 = self.avg_pool(layer3_s)
         s4 = self.avg_pool(layer4_s)
-        print('SPA', x_spa.shape)
+        #print('SPA', x_spa.shape)
         
 
         feats = torch.cat((s1, s2, s3, s4, a1, a2), dim=1)
