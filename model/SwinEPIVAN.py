@@ -18,6 +18,31 @@ from timm.models.swin_transformer import SwinTransformerBlock, PatchMerging
 from model.NAT import nat_mini, nat_base
 from einops.layers.torch import Rearrange
 
+class ChannelAttention3D(nn.Module):
+    def __init__(self, in_planes, ratio=16):
+        super(ChannelAttention3D, self).__init__()
+        # Adaptive pooling for 3D inputs
+        self.avg_pool = nn.AdaptiveAvgPool3d(1)
+        self.max_pool = nn.AdaptiveMaxPool3d(1)
+
+        # Fully connected layers replaced with 3D convolution
+        self.fc1 = nn.Conv3d(in_planes, in_planes // ratio, kernel_size=1, bias=False)
+        self.fc2 = nn.Conv3d(in_planes // ratio, in_planes, kernel_size=1, bias=False)
+
+        # Non-linearity and activation
+        self.relu1 = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        # Apply average pooling and max pooling
+        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
+        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
+        
+        # Combine outputs
+        out = avg_out + max_out
+        return self.sigmoid(out)
+
+
 
 
 class eca_layer(nn.Module):
@@ -53,8 +78,8 @@ class IntegratedModelV2(nn.Module):
         
         self.nat = nat_base(pretrained=True)  
 
-        self.eca1 = eca_layer()
-        self.eca2 = eca_layer()
+        self.cam1 = ChannelAttention3D(in_planes=1024, ratio=20)
+        self.cam2 = ChannelAttention3D(in_planes=1024, ratio=20)
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
@@ -92,14 +117,16 @@ class IntegratedModelV2(nn.Module):
         print(s3.shape)
         print(s4.shape)
 
-        x1 = s3.reshape(batch_size, 6, 16, 16, 1024).permute(0,1, 4, 2, 3)
-        x2 = s4.reshape(batch_size, 6, 16, 16, 1024).permute(0,1, 4, 2, 3)
+        x1 = s3.reshape(batch_size, 6, 16, 16, 1024)#.permute(0,1, 4, 2, 3)
+        x2 = s4.reshape(batch_size, 6, 16, 16, 1024)#.permute(0,1, 4, 2, 3)
 
+        #x1 = x1.reshape(batch_size, 6*1024, 16, 16)
+        #x2 = x2.reshape(batch_size, 6*1024, 16, 16)
+
+        x1 = self.cam1(x1)
+        x2 = self.cam2(x2)
         x1 = x1.reshape(batch_size, 6*1024, 16, 16)
         x2 = x2.reshape(batch_size, 6*1024, 16, 16)
-
-        x1 = self.eca1(x1)
-        x2 = self.eca2(x2)
         x1 = self.conv(x1)
         x2 = self.conv(x2)
 
