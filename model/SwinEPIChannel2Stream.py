@@ -127,34 +127,33 @@ class IntegratedModelV2(nn.Module):
         
 
     def forward(self, x_sai, x_mli):
-        print(x_mli.shape)
+        #print(x_mli.shape)
         x_mli = self.conv_down(x_mli)
-        print(x_mli.shape)
+        #print(x_mli.shape)
 
         s1, s2, s3, s4 = self.nat(x_mli)    
 
-        print(s1.shape)
-        print(s2.shape)
-        print(s3.shape)
-        print(s4.shape)
+        #print(s1.shape)
+        #print(s2.shape)
+        #print(s3.shape)
+        #print(s4.shape)
         s2 = rearrange(s2, 'b h w c-> b c h w')  
         s4 = rearrange(s4, 'b h w c-> b c h w')  
 
 
         x1 = self.cam1(s2) * s2
         x2 = self.cam2(s4) * s4
-        print(x1.shape)
-        print(x2.shape)
+        #print(x1.shape)
+        #print(x2.shape)
         x1 = self.avg_pool(x1)
         x2 = self.avg_pool(x2)
-        print(x1.shape)
-        print(x2.shape)
+        #print(x1.shape)
+        #print(x2.shape)
 
         feats = torch.cat((x1,x2), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
         scores = self.head_score(feats)
         weights = self.head_weight(feats)
         q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
-        print(q.shape)
 
         return q
