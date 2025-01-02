@@ -92,6 +92,10 @@ class IntegratedModelV2(nn.Module):
                 num_stb):
         super(IntegratedModelV2, self).__init__()
 
+        self.SFE = nn.Conv2d(3, 3, kernel_size=3, stride=1, dilation=7, padding=7, bias=False)
+        self.AFE = nn.Conv2d(3, 32, kernel_size=7, stride=7, padding=0, bias=False)
+
+
         self.conv_down = nn.Conv2d(
             in_channels=3,
             out_channels=3,
@@ -128,15 +132,22 @@ class IntegratedModelV2(nn.Module):
 
     def forward(self, x_sai, x_mli):
         #print(x_mli.shape)
-        x_mli = self.conv_down(x_mli)
+        #x_mli = self.conv_down(x_mli)
+        x_ang = self.AFE(x_mli)
+        a1=self.cam1(x_ang)
+        a2=self.cam2(a1)
+
+
+        x_spa = self.SFE(x_mli)
+
         #print(x_mli.shape)
 
-        s1, s2, s3, s4 = self.nat(x_mli)    
+        s1, s2, s3, s4 = self.nat(x_spa)    
 
-        #print(s1.shape)
-        #print(s2.shape)
-        #print(s3.shape)
-        #print(s4.shape)
+        print(s1.shape)
+        print(s2.shape)
+        print(s3.shape)
+        print(s4.shape)
         #s2 = rearrange(s2, 'b h w c-> b c h w')  
         s4 = rearrange(s4, 'b h w c-> b c h w')  
 
