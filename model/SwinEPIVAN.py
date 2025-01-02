@@ -117,8 +117,8 @@ class IntegratedModelV2(nn.Module):
         print(s3.shape)
         print(s4.shape)
 
-        x1 = s3.reshape(batch_size, 6, 16, 16, 1024)#.permute(0,1, 4, 2, 3)
-        x2 = s4.reshape(batch_size, 6, 16, 16, 1024)#.permute(0,1, 4, 2, 3)
+        x1 = s3.reshape(batch_size, 6, 16, 16, 1024).permute(0,4, 1, 2, 3)
+        x2 = s4.reshape(batch_size, 6, 16, 16, 1024).permute(0,4, 1, 2, 3)
 
         #x1 = x1.reshape(batch_size, 6*1024, 16, 16)
         #x2 = x2.reshape(batch_size, 6*1024, 16, 16)
