@@ -82,8 +82,8 @@ class IntegratedModelV2(nn.Module):
         self.cam2 = ChannelAttention3D(in_planes=1024, ratio=20)
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
-        self.rerange_layer = Rearrange('b c h w -> b (h w) c')
-        self.avg_pool = nn.AdaptiveAvgPool3d(1)
+        self.rerange_layer = Rearrange('b c h w d -> b (h w d) c')
+        self.avg_pool = nn.AdaptiveAvgPool3d(224 // 32)
 
         self.conv1 = nn.Conv2d(in_channels=512*6, out_channels=256, kernel_size=2, stride = 2)    
         self.conv2 = nn.Conv2d(in_channels=1024*6, out_channels=256, kernel_size=1)    
