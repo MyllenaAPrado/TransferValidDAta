@@ -167,12 +167,15 @@ class IntegratedModelV2(nn.Module):
         x_sai = rearrange(x_sai, 'b h w c-> b c h w')  
         x_sai = self.avg_pool(x_sai)
         #print(x_mli.shape)
+        s4 = self.avg_pool(s4)
+        print(s4.shape)
+
         print(x_sai.shape)
         #print(s2.shape)
         #print(s4.shape)
 
 
-        feats = torch.cat((s,x_sai), dim=1)
+        feats = torch.cat((s4,x_sai), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
 
         scores = self.head_score(feats)
