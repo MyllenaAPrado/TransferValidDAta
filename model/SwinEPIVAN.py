@@ -78,8 +78,8 @@ class IntegratedModelV2(nn.Module):
         
         self.nat = nat_base(pretrained=True)  
 
-        self.cam1 = ChannelAttention3D(in_planes=512, ratio=20)
-        self.cam2 = ChannelAttention3D(in_planes=1024, ratio=20)
+        self.cam1 = eca_layer()
+        self.cam2 = eca_layer()
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
         self.rerange_layer = Rearrange('b c h w d -> b (h w d) c')
@@ -119,11 +119,12 @@ class IntegratedModelV2(nn.Module):
         print(s3.shape)
         print(s4.shape)
 
-        x1 = s2.reshape(batch_size, 6, 32, 32, 512).permute(0,4, 1, 2, 3)
-        x2 = s4.reshape(batch_size, 6, 16, 16, 1024).permute(0,4, 1, 2, 3)
+        x1 = s2.permute(0,3, 1, 2)
+        x2 = s4.permute(0,3, 1, 2)
 
-        x1 = self.cam1(x1) * x1
-        x2 = self.cam2(x2) * x2
+
+        x1 = self.cam1(x1)# * x1
+        x2 = self.cam2(x2)# * x2
         print(x1.shape)
         print(x2.shape)
         x1 = self.avg_pool(x1)
