@@ -15,7 +15,7 @@ from model.Swin3D import SwinTransformer3d
 from timm import create_model
 from torch.nn.parameter import Parameter
 from timm.models.swin_transformer import SwinTransformerBlock, PatchMerging
-from model.NAT import nat_mini
+from model.NAT import nat_mini, nat_base
 from einops.layers.torch import Rearrange
 
 
@@ -51,7 +51,7 @@ class IntegratedModelV2(nn.Module):
         super(IntegratedModelV2, self).__init__()
         
         
-        self.nat = nat_mini(pretrained=True)  
+        self.nat = nat_base(pretrained=True)  
 
         self.eca1 = eca_layer()
         self.eca2 = eca_layer()
@@ -60,9 +60,7 @@ class IntegratedModelV2(nn.Module):
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
-        self.conv = nn.Conv2d(in_channels=3072, out_channels=512, kernel_size=1)
-
-    
+        self.conv = nn.Conv2d(in_channels=3072, out_channels=512, kernel_size=1)    
 
         embed_dim = 1024
         # Adaptive head
@@ -85,13 +83,10 @@ class IntegratedModelV2(nn.Module):
         
         batch_size = x.shape[0]
         x = x.unfold(2, 512, 512).unfold(3, 512, 512).permute(0, 2, 3, 1, 4, 5).reshape(batch_size, -1, 3, 512, 512)
-        #print(x.shape)
+        
         x = x.reshape(batch_size * 6, 3, 512, 512)     
 
-        _, _, s3, s4 = self.nat(x)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
-
-        #print(s3.shape)
-        #print(s4.shape)
+        _, _, s3, s4 = self.nat(x)    
 
         x1 = s3.reshape(batch_size, 6, 16, 16, 512).permute(0,1, 4, 2, 3)
         x2 = s4.reshape(batch_size, 6, 16, 16, 512).permute(0,1, 4, 2, 3)
@@ -103,15 +98,6 @@ class IntegratedModelV2(nn.Module):
         x2 = self.eca2(x2)
         x1 = self.conv(x1)
         x2 = self.conv(x2)
-        #x1 = self.avg_pool(x1)
-        #x2 = self.avg_pool(x2)
-
-        #print(x1.shape)
-        #print(x2.shape)
-
-
-        
-        #x = self.global_pool(x2)  # Reduce spatial dimensions to [batch_size, emb_size, 1, 1]
 
         feats = torch.cat((x1,x2), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
@@ -120,30 +106,4 @@ class IntegratedModelV2(nn.Module):
         q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
 
         return q
-    
-
-
-
-    '''
-    # Apply patch embedding
-    x = self.patch_embedding(attended_features)
-    #print('Swin input:',x.shape)
-    # Rearrange for Swin Transformer
-    x = rearrange(x, 'b c h w -> b h w c')
-
-    # Pass through Swin Transformer blocks
-    for swin_block in self.swin_blocks:
-        x = swin_block(x)
-
-    x = rearrange(x, 'b h w c -> b c h w')
-    x = self.eca(x)
-    x = rearrange(x, 'b c h w -> b h w c')    
-
-    x = self.patch_merging_1(x)
-    for swin_block in self.swin_blocks_1:
-        x = swin_block(x)  
-
-    # Global Pooling and Fully Connected Layer
-    x = rearrange(x, 'b h w c -> b c h w')  # Restore to [batch_size, emb_size, height, width]
-    '''
     
