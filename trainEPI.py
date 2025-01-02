@@ -179,13 +179,15 @@ if __name__ == '__main__':
     for train_folders, val_folder, test_folders in k_folders():
         if dataset == "VALID":
             transform_train=transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),                       
+                            transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
+                            transforms.CenterCrop((672, 224)),                       
                             transforms.RandomHorizontalFlip(),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            transforms.CenterCrop((3360, 512)),    
+                            transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
+                            transforms.CenterCrop((672, 224)),    
                             transforms.ToTensor()
                         ]) 
             image_size = (5642, 626)  # Input image size #44,5
