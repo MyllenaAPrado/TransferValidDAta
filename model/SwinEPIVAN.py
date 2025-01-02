@@ -85,7 +85,9 @@ class IntegratedModelV2(nn.Module):
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
-        self.conv = nn.Conv2d(in_channels=6144, out_channels=512, kernel_size=1)    
+        self.conv1 = nn.Conv2d(in_channels=6144, out_channels=512, kernel_size=1)    
+        self.conv2 = nn.Conv2d(in_channels=6144, out_channels=512, kernel_size=1)    
+
 
         embed_dim = 1024
         # Adaptive head
@@ -129,6 +131,8 @@ class IntegratedModelV2(nn.Module):
         print(x2.shape)
         x1 = x1.reshape(batch_size, 6*1024, 16, 16)
         x2 = x2.reshape(batch_size, 6*1024, 16, 16)
+        x1 = self.conv1(x1)
+        x2 = self.conv1(x2)
 
         feats = torch.cat((x1,x2), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
