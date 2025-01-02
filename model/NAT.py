@@ -332,7 +332,7 @@ def load_model_weights(model, arch, kwargs):
     #    strict = False
     #    del checkpoint["state_dict"]["head.weight"]
     #    del checkpoint["state_dict"]["head.bias"]
-    model.load_state_dict(checkpoint["state_dict"], strict=False)
+    model.load_state_dict(checkpoint, strict=False)
     return model
 
 
