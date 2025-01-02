@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from einops.layers.torch import Rearrange
 from timm import create_model
 from timm.models.vision_transformer import Block
-from model.NAT import nat_mini
+from model.NAT import nat_mini, nat_base
 
 
 
@@ -96,76 +96,58 @@ class IntegratedModelV2(nn.Module):
         self.AFE = nn.Conv2d(3, 32, kernel_size=7, stride=7, padding=0, bias=False)
 
 
-        self.conv_down = nn.Conv2d(
-            in_channels=3,
-            out_channels=3,
-            kernel_size=3,
-            stride=3
-        )
-
-        self.nat = nat_mini(pretrained=True)  
+        self.nat = nat_base(pretrained=True)  
         self.cam1 = eca_layer()#(in_planes=256, ratio=20)
         self.cam2 = eca_layer()#(in_planes=512, ratio=20)
 
 
-        self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
+        self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
-        embed_dim = 512
         # Adaptive head
+        embed_dim = 1216
         self.head_score = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim//2),
+            nn.Linear(embed_dim, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(embed_dim//2, 1),
+            nn.Linear(256, 1),
             nn.ReLU()
         )
         self.head_weight = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim//2),
+            nn.Linear(embed_dim, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(embed_dim//2, 1),
+            nn.Linear(256, 1),
             nn.Sigmoid()
         )
 
         
 
     def forward(self, x_sai, x_mli):
-        #print(x_mli.shape)
-        #x_mli = self.conv_down(x_mli)
+        
         x_ang = self.AFE(x_mli)
         print('ANG', x_ang.shape)
 
         a1=self.cam1(x_ang)
         a2=self.cam2(a1)
+        
+        a1 = self.avg_pool(a1)
+        a2 = self.avg_pool(a2)
 
 
         x_spa = self.SFE(x_mli)
+        layer1_s, layer2_s, layer3_s, layer4_s = self.van(x_spa)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
+        s1 = self.avg_pool(layer1_s)
+        s2 = self.avg_pool(layer2_s)
+        s3 = self.avg_pool(layer3_s)
+        s4 = self.avg_pool(layer4_s)
         print('SPA', x_spa.shape)
+        
 
-        #print(x_mli.shape)
+        feats = torch.cat((s1, s2, s3, s4, a1, a2), dim=1)
+        feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
+        #assert feats.shape[-1] == 1216 and len(feats.shape) == 3, 'Unexpected stacked features: {}'.format(feats.shape)
 
-        s1, s2, s3, s4 = self.nat(x_spa)    
-
-        print(s1.shape)
-        print(s2.shape)
-        print(s3.shape)
-        print(s4.shape)
-        #s2 = rearrange(s2, 'b h w c-> b c h w')  
-        s4 = rearrange(s4, 'b h w c-> b c h w')  
-
-
-        #x1 = self.cam1(s2)# * s2
-        x2 = self.cam2(s4)# * s4
-        #print(x1.shape)
-        #print(x2.shape)
-        #x1 = self.avg_pool(x1)
-        x2 = self.avg_pool(x2)
-        #print(x1.shape)
-        #print(x2.shape)
-
-        #feats = torch.cat((x1,x2), dim=1)
-        feats = self.rerange_layer(x2)  # (b, c, h, w) -> (b, h*w, c)
         scores = self.head_score(feats)
         weights = self.head_weight(feats)
         q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
