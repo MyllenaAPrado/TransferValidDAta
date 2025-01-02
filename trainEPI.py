@@ -19,7 +19,7 @@ from tqdm import tqdm
 import torch.optim as optim
 from matplotlib import pyplot as plt
 from thop import profile
-
+from model.LanguageModel import LIQE
 import csv
 
 
@@ -255,13 +255,14 @@ if __name__ == '__main__':
         swin_blocks = [1,1]
 
         # Initialize the model
-        model = IntegratedModelV2(
+        model = IntegratedModelV2()
+        '''IntegratedModelV2(
                     image_size=image_size, in_channels=in_channels, 
                     patch_size=patch_size, emb_size=emb_size, 
                     reduction_ratio=reduction_ratio, swin_window_size=swin_window_size, 
                     num_heads=num_heads, swin_blocks=swin_blocks,
                     num_stb=2, size_input= size_input)
-    
+        '''
         model = model.to(device)
 
         ### Create three input tensors, each with shape (1, 3, 224, 224)

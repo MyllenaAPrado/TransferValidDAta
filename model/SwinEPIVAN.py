@@ -15,55 +15,8 @@ from model.Swin3D import SwinTransformer3d
 from timm import create_model
 from torch.nn.parameter import Parameter
 from timm.models.swin_transformer import SwinTransformerBlock, PatchMerging
+from model.NAT import nat_mini
 
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
-        super(SpatialAttention, self).__init__()
-        assert kernel_size in (3, 7), "Kernel size must be 3 or 7"
-        padding = kernel_size // 2
-        self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=padding, bias=False)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        # Compute average and max pooling along the channel dimension
-        avg_out = torch.mean(x, dim=1, keepdim=True)  # [B, 1, H, W]
-        max_out, _ = torch.max(x, dim=1, keepdim=True)  # [B, 1, H, W]
-        # Concatenate along the channel dimension
-        concat = torch.cat([avg_out, max_out], dim=1)  # [B, 2, H, W]
-        # Pass through convolution and sigmoid
-        attention = self.sigmoid(self.conv(concat))  # [B, 1, H, W]
-        # Refine the input feature map
-        return x * attention
-
-class PatchEmbedding(nn.Module):
-    def __init__(
-        self,
-        in_channel: int = 3,
-        embed_dim: int = 128,
-        kernel_size: int = 7,
-        stride: int = 4,
-        padding: int = 3,
-    ):
-        """
-        in_channels: number of the channels in the input volume
-        embed_dim: embedding dimmesion of the patch
-        """
-        super().__init__()
-        self.patch_embeddings = nn.Conv3d(
-            in_channel,
-            embed_dim,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=padding,
-        )
-        self.norm = nn.LayerNorm(embed_dim)
-
-    def forward(self, x):
-        # standard embedding patch
-        patches = self.patch_embeddings(x)
-        #patches = patches.flatten(2).transpose(1, 2)
-        #patches = self.norm(patches)
-        return patches
 
 class eca_layer(nn.Module):
     """Constructs a ECA module.
@@ -90,77 +43,35 @@ class eca_layer(nn.Module):
 
         return x * y.expand_as(x)
 
-class SaveOutput:
-    def __init__(self):
-        self.outputs = []
-
-    def __call__(self, module, module_in, module_out):
-        self.outputs.append(module_out)
-
-    def clear(self):
-        self.outputs = []
 
 class IntegratedModelV2(nn.Module):
-    def __init__(self,image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks, num_stb, size_input):
+    def __init__(self):
         super(IntegratedModelV2, self).__init__()
         
-        self.deit = create_model('deit_tiny_patch16_224', pretrained=True)
-
-        self.save_output = SaveOutput()
-
-        # Freeze all layers
-        for param in self.deit.parameters():
-            param.requires_grad = False
-
-        hook_handles = []
-        for layer in self.deit.modules():
-            if isinstance(layer, Block):
-                handle = layer.register_forward_hook(self.save_output)
-                hook_handles.append(handle)
-
         
-        embed_dim=32
+        self.nat = nat_mini(pretrained=True)  
 
-        self.eca = eca_layer()
-        self.patch_embedding = nn.Conv2d(30, emb_size, kernel_size=patch_size, stride=patch_size)
+        self.eca1 = eca_layer()
+        self.eca2 = eca_layer()
 
-        
-        height = size_input[0]//patch_size#44
-        width = size_input[1]//patch_size #5
-        self.swin_blocks = nn.ModuleList([
-            SwinTransformerBlock(
-                dim=emb_size,
-                input_resolution=(height, width),
-                num_heads=num_heads[0],
-                window_size=swin_window_size[0],
-                shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
-            )
-            for i in range(swin_blocks[0])
-        ])
-
-        self.patch_merging_1 = PatchMerging(emb_size)        
-        self.swin_blocks_1 = nn.ModuleList([
-            SwinTransformerBlock(
-                dim=2*emb_size,
-                input_resolution=(height//2, width//2),
-                num_heads=num_heads[1],
-                window_size=swin_window_size[1],
-                shift_size=0 if i % 2 == 0 else swin_window_size[1] // 2
-            )
-            for i in range(swin_blocks[1])
-        ])
-      
         self.global_pool = nn.AdaptiveAvgPool2d(1)
     
 
-        embed = 512
+        embed_dim = 143
         # Adaptive head
         self.head_score = nn.Sequential(
-            nn.Linear(embed, 256),
+            nn.Linear(embed_dim, embed_dim//2),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(256, 1),
-            #nn.ReLU()
+            nn.Linear(embed_dim//2, embed_dim),
+            nn.ReLU()
+        )
+        self.head_weight = nn.Sequential(
+            nn.Linear(embed_dim, embed_dim//2),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(embed_dim//2, 1),
+            nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -169,40 +80,56 @@ class IntegratedModelV2(nn.Module):
         x = x.unfold(2, 224, 224).unfold(3, 224, 224).permute(0, 2, 3, 1, 4, 5).reshape(batch_size, -1, 3, 224, 224)
 
         x = x.reshape(batch_size * 30, 3, 224, 224)     
-        x = self.deit(x)   
-        x = self.save_output.outputs[11][:, 1:]
-        self.save_output.outputs.clear()
 
-        print(x.shape)
-        x = x.reshape(batch_size, 30, 196, 192)
-        attended_features = self.eca(x)
-        #print(attended_features.shape)
+        _, _, s3, s4 = self.nat(x)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
 
-        # Apply patch embedding
-        x = self.patch_embedding(attended_features)
-        #print('Swin input:',x.shape)
-        # Rearrange for Swin Transformer
-        x = rearrange(x, 'b c h w -> b h w c')
+        print(s3.shape)
+        print(s4.shape)
 
-        # Pass through Swin Transformer blocks
-        for swin_block in self.swin_blocks:
-            x = swin_block(x)
+        x1 = s3.reshape(batch_size, 30, 196, 192)
+        x2 = s4.reshape(batch_size, 30, 196, 192)
 
-        x = rearrange(x, 'b h w c -> b c h w')
-        x = self.eca(x)
-        x = rearrange(x, 'b c h w -> b h w c')    
+        x1 = self.eca(x1)
+        x2 = self.eca(x2)
 
-        x = self.patch_merging_1(x)
-        for swin_block in self.swin_blocks_1:
-            x = swin_block(x)  
+        print(x1.shape)
+        print(x2.shape)
 
-        # Global Pooling and Fully Connected Layer
-        x = rearrange(x, 'b h w c -> b c h w')  # Restore to [batch_size, emb_size, height, width]
-        x = self.global_pool(x)  # Reduce spatial dimensions to [batch_size, emb_size, 1, 1]
-        x = x.view(x.size(0), -1)  # Flatten to [batch_size, emb_size]
 
-        scores = self.head_score(x)
-        print(scores.shape)
         
-        return scores
+        #x = self.global_pool(x2)  # Reduce spatial dimensions to [batch_size, emb_size, 1, 1]
+
+        feats = torch.cat((x1,x2), dim=1)
+        feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
+        scores = self.head_score(feats)
+        weights = self.head_weight(feats)
+        q = torch.sum(scores * weights, dim=1) /torch.sum(weights, dim=1)
+
+        return q
+    
+
+
+
+    '''
+    # Apply patch embedding
+    x = self.patch_embedding(attended_features)
+    #print('Swin input:',x.shape)
+    # Rearrange for Swin Transformer
+    x = rearrange(x, 'b c h w -> b h w c')
+
+    # Pass through Swin Transformer blocks
+    for swin_block in self.swin_blocks:
+        x = swin_block(x)
+
+    x = rearrange(x, 'b h w c -> b c h w')
+    x = self.eca(x)
+    x = rearrange(x, 'b c h w -> b h w c')    
+
+    x = self.patch_merging_1(x)
+    for swin_block in self.swin_blocks_1:
+        x = swin_block(x)  
+
+    # Global Pooling and Fully Connected Layer
+    x = rearrange(x, 'b h w c -> b c h w')  # Restore to [batch_size, emb_size, height, width]
+    '''
     
