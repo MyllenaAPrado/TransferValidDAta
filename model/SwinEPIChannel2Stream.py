@@ -100,8 +100,8 @@ class IntegratedModelV2(nn.Module):
         )
 
         self.nat = nat_mini(pretrained=True)  
-        self.cam1 = ChannelAttention(in_planes=256, ratio=20)
-        self.cam2 = ChannelAttention(in_planes=512, ratio=20)
+        self.cam1 = eca_layer()#(in_planes=256, ratio=20)
+        self.cam2 = eca_layer()#(in_planes=512, ratio=20)
 
 
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
@@ -141,8 +141,8 @@ class IntegratedModelV2(nn.Module):
         s4 = rearrange(s4, 'b h w c-> b c h w')  
 
 
-        x1 = self.cam1(s2) * s2
-        x2 = self.cam2(s4) * s4
+        x1 = self.cam1(s2)# * s2
+        x2 = self.cam2(s4)# * s4
         #print(x1.shape)
         #print(x2.shape)
         x1 = self.avg_pool(x1)
