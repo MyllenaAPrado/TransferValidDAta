@@ -67,25 +67,15 @@ class eca_layer(nn.Module):
 
         return x * y.expand_as(x)
 
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
+class SaveOutput:
+    def __init__(self):
+        self.outputs = []
 
-        self.fc1 = nn.Conv2d(in_planes, in_planes // 16, 1, bias=False)
-        self.fc2 = nn.Conv2d(in_planes // 16, in_planes, 1, bias=False)
+    def __call__(self, module, module_in, module_out):
+        self.outputs.append(module_out)
 
-        self.relu1 = nn.ReLU()
-
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
-        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
-        out = avg_out + max_out
-        return self.sigmoid(out)
-
+    def clear(self):
+        self.outputs = []
 
 class IntegratedModelV2(nn.Module):
     def __init__(self, image_size, in_channels, patch_size, emb_size, reduction_ratio, swin_window_size, num_heads, swin_blocks,
@@ -100,12 +90,24 @@ class IntegratedModelV2(nn.Module):
         )
 
         self.nat = nat_mini(pretrained=True)  
-        self.cam1 = ChannelAttention(in_planes=512, ratio=20)
-        self.cam2 = ChannelAttention(in_planes=1024, ratio=20)
-
+        self.eca = eca_layer()
 
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
+
+        # Patch embedding
+        #self.patch_embedding = nn.Conv2d(25*3, 64, kernel_size=5, stride=5)
+
+        #self.swin_blocks = nn.ModuleList([
+        #    SwinTransformerBlock(
+        #        dim=64,
+        #        input_resolution=(14, 14),
+        #        num_heads=2,
+        #        window_size=swin_window_size[0],
+        #        shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
+        #    )
+        #    for i in range(1)
+        #])
 
         embed_dim = 143
         # Adaptive head
@@ -128,27 +130,56 @@ class IntegratedModelV2(nn.Module):
 
 
     def forward(self, x_sai, x_mli):
+        #print(x_mli.shape)
+        #print(x_sai.shape)
+        batch_size, _, _, _,_ = x_sai.shape
+        #x_mli=self.conv_down(x_mli)
         print(x_mli.shape)
-        s1, s2, s3, s4 = self.nat(x_mli)    
+        s1, s2, s3, s4 = self.nat(x_mli)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
+        #s1 = self.avg_pool(layer1_s)
+        #s2 = self.avg_pool(layer2_s)
+        #s3 = self.avg_pool(layer3_s)
+        #s4 = self.avg_pool(s)
 
         print(s1.shape)
         print(s2.shape)
         print(s3.shape)
         print(s4.shape)
-        
-        x1 = self.cam1(x1) * x1
-        x2 = self.cam2(x2) * x2
-        print(x1.shape)
-        print(x2.shape)
-        x1 = self.avg_pool(x1)
-        x2 = self.avg_pool(x2)
-        print(x1.shape)
-        print(x2.shape)
 
-        feats = torch.cat((x1,x2), dim=1)
+        #print(s4.shape)
+        #print(x_sai.shape)
+
+        x_sai = x_sai.reshape(batch_size, 25*3, 224, 224)  
+        #print(x_sai.shape)
+        #x_sai = x_sai.reshape(batch_size, 16, 196, 192)
+        ##print(x_sai.shape)\
+        #x_sai = x_sai.reshape(batch_size, 4,4, 14,14, 192)
+        #x_sai = x_sai.permute(0, 3, 1, 4, 2, 5)  # [batch_size, channels, grid_h, height, grid_w, width]
+        #x_sai = x_sai.reshape(batch_size, 192, 4 * 14, 4 * 14)  # [batch_size, channels, total_height, total_width]
+        x_sai = self.eca(x_sai)
+        #x_sai = self.patch_embedding(x_sai)
+        #x_sai = self.eca(x_sai)
+
+        #x_sai = rearrange(x_sai, 'b c h w -> b h w c')
+        ## Pass through Swin Transformer blocks
+        #for swin_block in self.swin_blocks:
+        #    x_sai = swin_block(x_sai)
+        #x_sai = rearrange(x_sai, 'b h w c-> b c h w')  
+        x_sai = self.avg_pool(x_sai)
+        #print(x_mli.shape)
+        s4 = self.avg_pool(s4)
+        print(s4.shape)
+
+        print(x_sai.shape)
+        #print(s2.shape)
+        #print(s4.shape)
+
+
+        feats = torch.cat((s4,x_sai), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
+
         scores = self.head_score(feats)
         weights = self.head_weight(feats)
-        q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
+        q = torch.sum(scores * weights, dim=1) #/ torch.sum(weights, dim=1)
 
-        return q
+        return self.quality(q)
