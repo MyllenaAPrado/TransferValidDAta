@@ -79,6 +79,7 @@ class IntegratedModelV2(nn.Module):
         batch_size = x.shape[0]
         x = x.unfold(2, 512, 512).unfold(3, 512, 512).permute(0, 2, 3, 1, 4, 5).reshape(batch_size, -1, 3, 512, 512)
         print(x.shape)
+        x = x.reshape(batch_size * 6, 3, 512, 512)     
 
         _, _, s3, s4 = self.nat(x)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
 
