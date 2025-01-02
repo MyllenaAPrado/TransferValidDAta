@@ -135,7 +135,7 @@ class IntegratedModelV2(nn.Module):
         batch_size, _, _, _,_ = x_sai.shape
         #x_mli=self.conv_down(x_mli)
         print(x_mli.shape)
-        s = self.nat(x_mli)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
+        s1, s2, s3, s4 = self.nat(x_mli)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
         #s1 = self.avg_pool(layer1_s)
         #s2 = self.avg_pool(layer2_s)
         #s3 = self.avg_pool(layer3_s)
