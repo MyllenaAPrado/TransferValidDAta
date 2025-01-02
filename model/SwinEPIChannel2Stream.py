@@ -113,7 +113,7 @@ class IntegratedModelV2(nn.Module):
             nn.Linear(embed_dim, embed_dim//2),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(embed_dim//2, embed_dim),
+            nn.Linear(embed_dim//2, 1),
             nn.ReLU()
         )
         self.head_weight = nn.Sequential(
@@ -124,8 +124,7 @@ class IntegratedModelV2(nn.Module):
             nn.Sigmoid()
         )
 
-        self.quality = nn.Linear(embed_dim, 1)
-
+        
 
     def forward(self, x_sai, x_mli):
         print(x_mli.shape)
@@ -156,5 +155,6 @@ class IntegratedModelV2(nn.Module):
         scores = self.head_score(feats)
         weights = self.head_weight(feats)
         q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
+        print(q.shape)
 
         return q
