@@ -141,7 +141,7 @@ class IntegratedModelV2(nn.Module):
         #s3 = self.avg_pool(layer3_s)
         #s4 = self.avg_pool(s)
 
-        #print(s2.shape)
+        print(s.shape)
         #print(s4.shape)
         #print(x_sai.shape)
 
