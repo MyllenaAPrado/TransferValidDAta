@@ -123,14 +123,12 @@ class IntegratedModelV2(nn.Module):
         #x1 = x1.reshape(batch_size, 6*1024, 16, 16)
         #x2 = x2.reshape(batch_size, 6*1024, 16, 16)
 
-        x1 = self.cam1(x1)
-        x2 = self.cam2(x2)
+        x1 = self.cam1(x1) * x1
+        x2 = self.cam2(x2) * x2
         print(x1.shape)
         print(x2.shape)
         x1 = x1.reshape(batch_size, 6*1024, 16, 16)
         x2 = x2.reshape(batch_size, 6*1024, 16, 16)
-        x1 = self.conv(x1)
-        x2 = self.conv(x2)
 
         feats = torch.cat((x1,x2), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
