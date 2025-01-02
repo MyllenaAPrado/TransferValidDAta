@@ -129,6 +129,9 @@ class IntegratedModelV2(nn.Module):
 
     def forward(self, x_sai, x_mli):
         print(x_mli.shape)
+        x_mli = self.conv_down(x_mli)
+        print(x_mli.shape)
+
         s1, s2, s3, s4 = self.nat(x_mli)    
 
         print(s1.shape)
