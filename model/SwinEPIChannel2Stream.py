@@ -15,7 +15,7 @@ from einops.layers.torch import Rearrange
 from timm import create_model
 from timm.models.vision_transformer import Block
 from model.NAT import nat_mini, nat_base
-from model.VAN
+from model.VAN import van_b2
 
 
 
