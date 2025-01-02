@@ -16,6 +16,8 @@ from timm import create_model
 from torch.nn.parameter import Parameter
 from timm.models.swin_transformer import SwinTransformerBlock, PatchMerging
 from model.NAT import nat_mini
+from einops.layers.torch import Rearrange
+
 
 
 class eca_layer(nn.Module):
@@ -55,6 +57,8 @@ class IntegratedModelV2(nn.Module):
         self.eca2 = eca_layer()
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
+        self.rerange_layer = Rearrange('b c h w -> b (h w) c')
+
     
 
         embed_dim = 143
