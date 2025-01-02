@@ -280,11 +280,11 @@ class NAT(nn.Module):
 
         self.norm = norm_layer(self.num_features)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.head = (
-            nn.Linear(self.num_features, num_classes)
-            if num_classes > 0
-            else nn.Identity()
-        )
+        #self.head = (
+        #    nn.Linear(self.num_features, num_classes)
+        #    if num_classes > 0
+        #    else nn.Identity()
+        #)
 
         self.apply(self._init_weights)
 
@@ -315,7 +315,7 @@ class NAT(nn.Module):
 
     def forward(self, x):
         x = self.forward_features(x)
-        x = self.head(x)
+        #x = self.head(x)
         return x
 
 
@@ -325,9 +325,6 @@ def load_model_weights(model, arch, kwargs):
         url=url, map_location="cpu", check_hash=True
     )
     strict = True
-    print("Checkpoint keys:", checkpoint.keys())  # Inspect the keys in the checkpoint
-
-
     #if "num_classes" in kwargs and kwargs["num_classes"] != 1000:
     #    strict = False
     #    del checkpoint["state_dict"]["head.weight"]
