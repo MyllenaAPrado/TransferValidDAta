@@ -107,7 +107,7 @@ class IntegratedModelV2(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
 
-        embed_dim = 768
+        embed_dim = 512
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, embed_dim//2),
