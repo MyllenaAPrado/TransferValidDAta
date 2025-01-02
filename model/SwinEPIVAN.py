@@ -82,7 +82,7 @@ class IntegratedModelV2(nn.Module):
         self.cam2 = eca_layer()
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
-        self.rerange_layer = Rearrange('b c h w d -> b (h w d) c')
+        self.rerange_layer = Rearrange('b c h w -> b (h w) c')
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
         self.conv1 = nn.Conv2d(in_channels=512*6, out_channels=256, kernel_size=2, stride = 2)    
