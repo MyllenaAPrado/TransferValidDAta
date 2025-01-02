@@ -344,9 +344,11 @@ def nat_mini(pretrained=False, **kwargs):
         **kwargs
     )
     if pretrained:
-        url = model_urls["nat_mini_1k"]
-        checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
-        model.load_state_dict(checkpoint)
+        #url = model_urls["nat_mini_1k"]
+        #checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
+        #model.load_state_dict(checkpoint)
+        model = load_model_weights(model, "nat_mini_1k", kwargs)
+
     return model
 
 
@@ -362,9 +364,11 @@ def nat_tiny(pretrained=False, **kwargs):
         **kwargs
     )
     if pretrained:
-        url = model_urls["nat_tiny_1k"]
-        checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
-        model.load_state_dict(checkpoint)
+        #url = model_urls["nat_tiny_1k"]
+        #checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
+        #model.load_state_dict(checkpoint)
+        model = load_model_weights(model, "nat_tiny_1k", kwargs)
+
     return model
 
 
@@ -381,9 +385,11 @@ def nat_small(pretrained=False, **kwargs):
         **kwargs
     )
     if pretrained:
-        url = model_urls["nat_small_1k"]
-        checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
-        model.load_state_dict(checkpoint)
+        #url = model_urls["nat_small_1k"]
+        #checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
+        #model.load_state_dict(checkpoint)
+        model = load_model_weights(model, "nat_small_1k", kwargs)
+
     return model
 
 
@@ -400,7 +406,9 @@ def nat_base(pretrained=False, **kwargs):
         **kwargs
     )
     if pretrained:
-        url = model_urls["nat_base_1k"]
-        checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
-        model.load_state_dict(checkpoint)
+        #url = model_urls["nat_base_1k"]
+        #checkpoint = torch.hub.load_state_dict_from_url(url=url, map_location="cpu")
+        #model.load_state_dict(checkpoint)
+        model = load_model_weights(model, "nat_base_1k", kwargs)
+
     return model
