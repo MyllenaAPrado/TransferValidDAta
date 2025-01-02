@@ -93,7 +93,7 @@ class IntegratedModelV2(nn.Module):
         self.eca = eca_layer()
 
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
-        #self.rerange_layer = Rearrange('b c h w -> b (h w) c')
+        self.rerange_layer = Rearrange('b c h w -> b (h w) c')
 
         # Patch embedding
         #self.patch_embedding = nn.Conv2d(25*3, 64, kernel_size=5, stride=5)
