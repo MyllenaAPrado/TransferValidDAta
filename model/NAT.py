@@ -328,7 +328,7 @@ class NAT(nn.Module):
 def load_model_weights(model, arch, kwargs):
     url = model_urls[arch]
     checkpoint = torch.hub.load_state_dict_from_url(
-        url=url, map_location="gpu", check_hash=True
+        url=url, map_location="cpu", check_hash=True
     )
     strict = True
     #if "num_classes" in kwargs and kwargs["num_classes"] != 1000:
