@@ -306,11 +306,12 @@ class NAT(nn.Module):
         x = self.pos_drop(x)
         feature_list = []
 
-
+        i =0
         for level in self.levels:
             x = level(x)
             feature_list.append(x)
-
+            i+=1
+        print(i)
 
         #x = self.norm(x).flatten(1, 2)
         #x = self.avgpool(x.transpose(1, 2))

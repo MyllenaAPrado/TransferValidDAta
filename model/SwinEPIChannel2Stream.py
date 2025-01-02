@@ -93,21 +93,21 @@ class IntegratedModelV2(nn.Module):
         self.eca = eca_layer()
 
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
-        self.rerange_layer = Rearrange('b c h w -> b (h w) c')
+        #self.rerange_layer = Rearrange('b c h w -> b (h w) c')
 
         # Patch embedding
-        self.patch_embedding = nn.Conv2d(25*3, 64, kernel_size=5, stride=5)
+        #self.patch_embedding = nn.Conv2d(25*3, 64, kernel_size=5, stride=5)
 
-        self.swin_blocks = nn.ModuleList([
-            SwinTransformerBlock(
-                dim=64,
-                input_resolution=(14, 14),
-                num_heads=2,
-                window_size=swin_window_size[0],
-                shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
-            )
-            for i in range(1)
-        ])
+        #self.swin_blocks = nn.ModuleList([
+        #    SwinTransformerBlock(
+        #        dim=64,
+        #        input_resolution=(14, 14),
+        #        num_heads=2,
+        #        window_size=swin_window_size[0],
+        #        shift_size=0 if i % 2 == 0 else swin_window_size[0] // 2
+        #    )
+        #    for i in range(1)
+        #])
 
         embed_dim = 132
         # Adaptive head
@@ -157,14 +157,14 @@ class IntegratedModelV2(nn.Module):
         #x_sai = x_sai.permute(0, 3, 1, 4, 2, 5)  # [batch_size, channels, grid_h, height, grid_w, width]
         #x_sai = x_sai.reshape(batch_size, 192, 4 * 14, 4 * 14)  # [batch_size, channels, total_height, total_width]
         x_sai = self.eca(x_sai)
-        x_sai = self.patch_embedding(x_sai)
+        #x_sai = self.patch_embedding(x_sai)
         #x_sai = self.eca(x_sai)
 
-        x_sai = rearrange(x_sai, 'b c h w -> b h w c')
-        # Pass through Swin Transformer blocks
-        for swin_block in self.swin_blocks:
-            x_sai = swin_block(x_sai)
-        x_sai = rearrange(x_sai, 'b h w c-> b c h w')  
+        #x_sai = rearrange(x_sai, 'b c h w -> b h w c')
+        ## Pass through Swin Transformer blocks
+        #for swin_block in self.swin_blocks:
+        #    x_sai = swin_block(x_sai)
+        #x_sai = rearrange(x_sai, 'b h w c-> b c h w')  
         x_sai = self.avg_pool(x_sai)
         #print(x_mli.shape)
         s4 = self.avg_pool(s4)
