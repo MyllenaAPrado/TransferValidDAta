@@ -109,7 +109,7 @@ class IntegratedModelV2(nn.Module):
             for i in range(1)
         ])
 
-        embed_dim = 1024
+        embed_dim = 512
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, embed_dim//2),
@@ -139,7 +139,7 @@ class IntegratedModelV2(nn.Module):
         #s1 = self.avg_pool(layer1_s)
         #s2 = self.avg_pool(layer2_s)
         #s3 = self.avg_pool(layer3_s)
-        #s4 = self.avg_pool(s)
+        s4 = self.avg_pool(s)
 
         #print(s2.shape)
         #print(s4.shape)
@@ -168,7 +168,7 @@ class IntegratedModelV2(nn.Module):
         #print(s4.shape)
 
 
-        feats = torch.cat((s4,x_sai), dim=1)
+        feats = torch.cat((s,x_sai), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
 
         scores = self.head_score(feats)
