@@ -63,7 +63,7 @@ class IntegratedModelV2(nn.Module):
 
     
 
-        embed_dim = 143
+        embed_dim = 32
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, embed_dim//2),
