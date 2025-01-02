@@ -66,17 +66,17 @@ class IntegratedModelV2(nn.Module):
         embed_dim = 32
         # Adaptive head
         self.head_score = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim//2),
+            nn.Linear(embed_dim, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(embed_dim//2, embed_dim),
+            nn.Linear(256, 1),
             nn.ReLU()
         )
         self.head_weight = nn.Sequential(
-            nn.Linear(embed_dim, embed_dim//2),
+            nn.Linear(embed_dim, 256),
             nn.ReLU(),
             nn.Dropout(0.1),
-            nn.Linear(embed_dim//2, 1),
+            nn.Linear(256, 1),
             nn.Sigmoid()
         )
 
@@ -92,8 +92,11 @@ class IntegratedModelV2(nn.Module):
         print(s3.shape)
         print(s4.shape)
 
-        x1 = s3.reshape(batch_size, 16, 16, 512*6)
-        x2 = s4.reshape(batch_size, 16, 16, 512*6)
+        x1 = s3.reshape(batch_size, 6, 16, 16, 512).permute(0,1, 4, 2, 3)
+        x2 = s4.reshape(batch_size, 6, 16, 16, 512).permute(0,1, 4, 2, 3)
+
+        x1 = x1.reshape(batch_size, 6*512, 16, 16)
+        x2 = x2.reshape(batch_size, 6*512, 16, 16)
 
         x1 = self.eca1(x1)
         x2 = self.eca2(x2)
@@ -111,7 +114,7 @@ class IntegratedModelV2(nn.Module):
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
         scores = self.head_score(feats)
         weights = self.head_weight(feats)
-        q = torch.sum(scores * weights, dim=1) /torch.sum(weights, dim=1)
+        q = torch.sum(scores * weights, dim=1) / torch.sum(weights, dim=1)
 
         return q
     
