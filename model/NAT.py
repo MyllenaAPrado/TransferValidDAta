@@ -304,19 +304,25 @@ class NAT(nn.Module):
     def forward_features(self, x):
         x = self.patch_embed(x)
         x = self.pos_drop(x)
+        feature_list = []
+
 
         for level in self.levels:
             x = level(x)
+            feature_list.append(x)
 
-        x = self.norm(x).flatten(1, 2)
-        x = self.avgpool(x.transpose(1, 2))
-        x = torch.flatten(x, 1)
-        return x
+
+        #x = self.norm(x).flatten(1, 2)
+        #x = self.avgpool(x.transpose(1, 2))
+        #x = torch.flatten(x, 1)
+        #return x
+        return feature_list[0], feature_list[1], feature_list[2], feature_list[3]
+
 
     def forward(self, x):
-        x = self.forward_features(x)
-        #x = self.head(x)
-        return x
+        layer1, layer2, layer3, layer4 = self.forward_features(x)
+
+        return layer1, layer2, layer3, layer4
 
 
 def load_model_weights(model, arch, kwargs):
