@@ -325,11 +325,13 @@ def load_model_weights(model, arch, kwargs):
         url=url, map_location="cpu", check_hash=True
     )
     strict = True
+    print("Checkpoint keys:", checkpoint.keys())  # Inspect the keys in the checkpoint
 
-    if "num_classes" in kwargs and kwargs["num_classes"] != 1000:
-        strict = False
-        del checkpoint["state_dict"]["head.weight"]
-        del checkpoint["state_dict"]["head.bias"]
+
+    #if "num_classes" in kwargs and kwargs["num_classes"] != 1000:
+    #    strict = False
+    #    del checkpoint["state_dict"]["head.weight"]
+    #    del checkpoint["state_dict"]["head.bias"]
     model.load_state_dict(checkpoint["state_dict"], strict=False)
     return model
 
