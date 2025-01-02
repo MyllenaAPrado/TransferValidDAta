@@ -136,7 +136,7 @@ class IntegratedModelV2(nn.Module):
 
 
         x_spa = self.SFE(x_mli)
-        layer1_s, layer2_s, layer3_s, layer4_s = self.van(x_spa)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
+        layer1_s, layer2_s, layer3_s, layer4_s = self.nat(x_spa)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
         s1 = self.avg_pool(layer1_s)
         s2 = self.avg_pool(layer2_s)
         s3 = self.avg_pool(layer3_s)
