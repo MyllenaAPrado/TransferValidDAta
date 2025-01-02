@@ -77,17 +77,17 @@ class IntegratedModelV2(nn.Module):
     def forward(self, x):
         
         batch_size = x.shape[0]
-        x = x.unfold(2, 224, 224).unfold(3, 224, 224).permute(0, 2, 3, 1, 4, 5).reshape(batch_size, -1, 3, 224, 224)
-
-        x = x.reshape(batch_size * 30, 3, 224, 224)     
+        x = x.unfold(2, 512, 512).unfold(3, 512, 512).permute(0, 2, 3, 1, 4, 5).reshape(batch_size, -1, 3, 512, 512)
+        print(x.shape)
+        x = x.reshape(batch_size * 15, 3, 512, 512)     
 
         _, _, s3, s4 = self.nat(x)    # (b,64,56,56); (b,128,28,28); (b,320,14,14); (b,512,7,7)
 
         print(s3.shape)
         print(s4.shape)
 
-        x1 = s3.reshape(batch_size, 30, 49, 512)
-        x2 = s4.reshape(batch_size, 30, 49, 512)
+        x1 = s3.reshape(batch_size, 15, 49, 512)
+        x2 = s4.reshape(batch_size, 15, 49, 512)
 
         x1 = self.eca(x1)
         x2 = self.eca(x2)
