@@ -7,7 +7,7 @@ import torch.nn as nn
 import random
 from torchvision import transforms
 from torch.utils.data import DataLoader
-from model.EPIPatch import LFIQA
+from model.lfiqa import LFIQAVSTModel
 from data.valid2 import VALID_datset
 from data.win5lid import Win5LID_datset
 from data.lfdd import LFDD_datset
@@ -247,7 +247,7 @@ if __name__ == '__main__':
         #create model
         # Parameters
         # Initialize the model
-        model = LFIQA()
+        model = LFIQAVSTModel()
     
         model = model.to(device)
 

@@ -15,7 +15,7 @@ from model.Swin3D import SwinTransformer3d
 from timm import create_model
 from torch.nn.parameter import Parameter
 from timm.models.swin_transformer import SwinTransformerBlock, PatchMerging
-from model.NAT import nat_mini, nat_base
+#from model.NAT import nat_mini, nat_base
 from einops.layers.torch import Rearrange
 
 class ChannelAttention3D(nn.Module):
@@ -43,6 +43,15 @@ class ChannelAttention3D(nn.Module):
         return self.sigmoid(out)
 
 
+class SaveOutput:
+    def __init__(self):
+        self.outputs = []
+    
+    def __call__(self, module, module_in, module_out):
+        self.outputs.append(module_out)
+    
+    def clear(self):
+        self.outputs = []
 
 
 class eca_layer(nn.Module):
@@ -75,7 +84,20 @@ class IntegratedModelV2(nn.Module):
     def __init__(self):
         super(IntegratedModelV2, self).__init__()
         
-        self.nat = nat_base(pretrained=True)  
+        #self.nat = nat_base(pretrained=True)  
+        self.vit =  timm.create_model('vit_tiny_patch16_224', pretrained=True)
+
+        self.save_output = SaveOutput()
+
+        # Freeze all layers
+        for param in self.vit.parameters():
+            param.requires_grad = False
+
+        hook_handles = []
+        for layer in self.vit.modules():
+            if isinstance(layer, Block):
+                handle = layer.register_forward_hook(self.save_output)
+                hook_handles.append(handle)
 
         self.eca = eca_layer()
         self.eca2 = eca_layer()
@@ -85,7 +107,7 @@ class IntegratedModelV2(nn.Module):
 
         self.conv = nn.Conv2d(in_channels=26*3, out_channels=256, kernel_size=6, stride = 6)    
 
-        embed_dim = 1792
+        embed_dim = 282
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, 256),
@@ -102,16 +124,32 @@ class IntegratedModelV2(nn.Module):
             nn.Sigmoid()
         )
 
+    def extract_feature(self, save_output):
+        x6 = save_output.outputs[6][:, 1:]
+        x7 = save_output.outputs[7][:, 1:]
+        x8 = save_output.outputs[8][:, 1:]
+        x9 = save_output.outputs[9][:, 1:]
+        x = torch.cat((x6, x7, x8, x9), dim=2)
+        return x
+    
     def forward(self, x):
         batch_size = x.shape[0]
         x = x.unfold(2, 224, 224).unfold(3, 224, 224).permute(0, 2, 3, 1, 4, 5).reshape(batch_size,-1, 3, 224, 224)
 
-        x_nat = x[:, 13, :, :, :].reshape(batch_size,3, 224, 224) 
-        _, s2, _, s4 = self.nat(x_nat) 
-        x1 = s2.permute(0,3, 1, 2)
-        x2 = s4.permute(0,3, 1, 2)
-        x1 = self.avg_pool(x1)
-        x2 = self.avg_pool(x2)
+        x_nat = x.reshape(batch_size*26,3, 224, 224)
+        #x_nat = x[:, 13, :, :, :].reshape(batch_size,3, 224, 224) 
+        #_, s2, _, s4 = self.nat(x_nat) 
+        #x1 = s2.permute(0,3, 1, 2)
+        #x2 = s4.permute(0,3, 1, 2)
+        #x1 = self.avg_pool(x1)
+        #x2 = self.avg_pool(x2)
+        x_nat = self.vit(x_nat)  # Features shape: (batch_size * 16, embed_dim)
+        x_nat = self.extract_feature(self.save_output)
+        self.save_output.outputs.clear()
+        print(x_nat.shape)
+        x_nat = x.reshape(batch_size, 26, 196, 768)
+        x_nat = self.avg_pool(x_nat)
+        print(x_nat.shape)
 
         x_eca = x.reshape(batch_size, 26*3, 224, 224)   
         x_eca = self.eca (x_eca)
@@ -119,7 +157,7 @@ class IntegratedModelV2(nn.Module):
         x_eca = self.eca2 (x_eca)
         x_eca = self.avg_pool(x_eca)
        
-        feats = torch.cat((x_eca, x1, x2), dim=1)
+        feats = torch.cat((x_eca, x_nat), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
         scores = self.head_score(feats)
         weights = self.head_weight(feats)
