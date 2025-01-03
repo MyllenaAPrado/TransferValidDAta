@@ -179,14 +179,14 @@ if __name__ == '__main__':
     for train_folders, val_folder, test_folders in k_folders():
         if dataset == "VALID":
             transform_train=transforms.Compose([
-                            transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
+                            #transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
                             transforms.CenterCrop((3072, 512)),                       
                             transforms.RandomHorizontalFlip(),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
-                            transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
+                            #transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
                             transforms.CenterCrop((3072, 512)),    
                             transforms.ToTensor()
                         ]) 
