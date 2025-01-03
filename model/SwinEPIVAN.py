@@ -83,7 +83,7 @@ class IntegratedModelV2(nn.Module):
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
-        self.conv = nn.Conv2d(in_channels=9, out_channels=256, kernel_size=6, stride = 6)    
+        self.conv = nn.Conv2d(in_channels=26*3, out_channels=256, kernel_size=6, stride = 6)    
 
         embed_dim = 1792
         # Adaptive head
@@ -104,16 +104,16 @@ class IntegratedModelV2(nn.Module):
 
     def forward(self, x):
         batch_size = x.shape[0]
-        x = x.unfold(2, 1024, 1024).unfold(3, 512, 512).permute(0, 2, 3, 1, 4, 5).reshape(batch_size,-1, 3, 1024, 512)
+        x = x.unfold(2, 224, 224).unfold(3, 224, 224).permute(0, 2, 3, 1, 4, 5).reshape(batch_size,-1, 3, 224, 224)
 
-        x_nat = x[:, 2, :, :, :].reshape(batch_size,3, 1024, 512) 
+        x_nat = x[:, 13, :, :, :].reshape(batch_size,3, 224, 224) 
         _, s2, _, s4 = self.nat(x_nat) 
         x1 = s2.permute(0,3, 1, 2)
         x2 = s4.permute(0,3, 1, 2)
         x1 = self.avg_pool(x1)
         x2 = self.avg_pool(x2)
 
-        x_eca = x.reshape(batch_size, 3*3, 1024, 512)   
+        x_eca = x.reshape(batch_size, 26*3, 224, 224)   
         x_eca = self.eca (x_eca)
         x_eca = self.conv (x_eca)
         x_eca = self.eca2 (x_eca)
