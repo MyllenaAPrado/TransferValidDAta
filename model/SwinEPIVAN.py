@@ -116,6 +116,8 @@ class IntegratedModelV2(nn.Module):
         x_eca = self.eca (x_eca)
         x_eca = self.conv (x_eca)
         x_eca = self.eca2 (x_eca)
+        x_eca = self.avg_pool(x_eca)
+
 
         x_nat = x.reshape(batch_size*3, 3, 1024, 512)     
         _, s2, _, s4 = self.nat(x_nat)    
