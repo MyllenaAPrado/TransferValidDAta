@@ -192,7 +192,7 @@ if __name__ == '__main__':
                         ]) 
             image_size = (5642, 626)  # Input image size #44,5
             size_input=(706,79)
-            
+            print(train_folders, val_folder, test_folders)
             # data load
             train_dataset = VALID_datset(folders=train_folders, transform=transform_train)        
             val_dataset = VALID_datset(folders=val_folder, transform=transform_eval)
