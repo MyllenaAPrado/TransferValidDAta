@@ -124,7 +124,7 @@ class IntegratedModelV2(nn.Module):
         x2 = self.avg_pool(x2)
         print(x1.shape)
         print(x2.shape)
-        print(x_eca)
+        print(x_eca.shape)
         feats = torch.cat((x_eca, x1, x2), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
         scores = self.head_score(feats)
