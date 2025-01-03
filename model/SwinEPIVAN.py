@@ -88,7 +88,7 @@ class IntegratedModelV2(nn.Module):
         self.conv2 = nn.Conv2d(in_channels=1024*6, out_channels=256, kernel_size=1)    
 
 
-        embed_dim = 1536
+        embed_dim = 1792
         # Adaptive head
         self.head_score = nn.Sequential(
             nn.Linear(embed_dim, 256),
