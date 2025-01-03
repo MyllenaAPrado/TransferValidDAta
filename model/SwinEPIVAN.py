@@ -80,13 +80,10 @@ class IntegratedModelV2(nn.Module):
         self.eca = eca_layer()
         self.eca2 = eca_layer()
 
-        self.global_pool = nn.AdaptiveAvgPool2d(1)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
         self.conv = nn.Conv2d(in_channels=9, out_channels=256, kernel_size=6, stride = 6)    
-        self.conv2 = nn.Conv2d(in_channels=1024*6, out_channels=256, kernel_size=1)    
-
 
         embed_dim = 1792
         # Adaptive head
@@ -110,7 +107,6 @@ class IntegratedModelV2(nn.Module):
         
         batch_size = x.shape[0]
         x = x.unfold(2, 1024, 1024).unfold(3, 512, 512).permute(0, 2, 3, 1, 4, 5).reshape(batch_size,-1, 3, 1024, 512)
-        print(x.shape)
 
         x_nat = x[:, 2, :, :, :].reshape(batch_size,3, 1024, 512) 
         _, s2, _, s4 = self.nat(x_nat) 
@@ -124,11 +120,7 @@ class IntegratedModelV2(nn.Module):
         x_eca = self.conv (x_eca)
         x_eca = self.eca2 (x_eca)
         x_eca = self.avg_pool(x_eca)
-
        
-        print(x1.shape)
-        print(x2.shape)
-        print(x_eca.shape)
         feats = torch.cat((x_eca, x1, x2), dim=1)
         feats = self.rerange_layer(feats)  # (b, c, h, w) -> (b, h*w, c)
         scores = self.head_score(feats)
