@@ -13,6 +13,7 @@ from timm.models.registry import register_model
 import natten
 from natten import NeighborhoodAttention2D as NeighborhoodAttention
 from timm.models.vision_transformer import _cfg
+from mixTransformer import NatConfig
 
 is_natten_post_017 = hasattr(natten, "context")
 
@@ -351,7 +352,7 @@ def nat_mini(pretrained=False, **kwargs):
         kernel_size=7,
         **kwargs
     )
-    model.default_cfg = _cfg()
+    model.default_cfg = NatConfig()
 
     if pretrained:
         #url = model_urls["nat_mini_1k"]
@@ -373,7 +374,7 @@ def nat_tiny(pretrained=False, **kwargs):
         kernel_size=7,
         **kwargs
     )
-    model.default_cfg = _cfg()
+    model.default_cfg = NatConfig()
 
     if pretrained:
         #url = model_urls["nat_tiny_1k"]
@@ -396,7 +397,7 @@ def nat_small(pretrained=False, **kwargs):
         kernel_size=7,
         **kwargs
     )
-    model.default_cfg = _cfg()
+    model.default_cfg = NatConfig()
 
     if pretrained:
         #url = model_urls["nat_small_1k"]
@@ -419,7 +420,7 @@ def nat_base(pretrained=False, **kwargs):
         kernel_size=7,
         **kwargs
     )
-    model.default_cfg = _cfg()
+    model.default_cfg = NatConfig()
 
     if pretrained:
         #url = model_urls["nat_base_1k"]
