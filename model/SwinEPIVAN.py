@@ -103,8 +103,6 @@ class IntegratedModelV2(nn.Module):
         )
 
     def forward(self, x):
-        print(x.shape)
-        
         batch_size = x.shape[0]
         x = x.unfold(2, 1024, 1024).unfold(3, 512, 512).permute(0, 2, 3, 1, 4, 5).reshape(batch_size,-1, 3, 1024, 512)
 
