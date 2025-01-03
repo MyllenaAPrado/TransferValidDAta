@@ -75,16 +75,16 @@ class IntegratedModelV2(nn.Module):
     def __init__(self):
         super(IntegratedModelV2, self).__init__()
         
-        
         self.nat = nat_base(pretrained=True)  
 
         self.eca = eca_layer()
+        self.eca2 = eca_layer()
 
         self.global_pool = nn.AdaptiveAvgPool2d(1)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
         self.avg_pool = nn.AdaptiveAvgPool2d(224 // 32)
 
-        self.conv1 = nn.Conv2d(in_channels=512*6, out_channels=256, kernel_size=2, stride = 2)    
+        self.conv = nn.Conv2d(in_channels=9, out_channels=256, kernel_size=6, stride = 6)    
         self.conv2 = nn.Conv2d(in_channels=1024*6, out_channels=256, kernel_size=1)    
 
 
@@ -114,6 +114,9 @@ class IntegratedModelV2(nn.Module):
 
         x_eca = x.reshape(batch_size, 3*3, 1024, 512)   
         x_eca = self.eca (x_eca)
+        x_eca = self.conv (x_eca)
+        x_eca = self.eca2 (x_eca)
+
         x_nat = x.reshape(batch_size*3, 3, 1024, 512)     
         _, s2, _, s4 = self.nat(x_nat)    
         print(s2.shape)
