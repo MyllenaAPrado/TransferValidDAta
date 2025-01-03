@@ -89,7 +89,7 @@ class IntegratedModelV2(nn.Module):
             stride=12
         )
 
-        self.vit = timm.create_model('vit_tiny_patch16_224', pretrained=True)
+        self.vit = timm.create_model('vit_base_patch16_224', pretrained=True)
         self.save_output = SaveOutput()
 
         # Freeze all layers
@@ -131,7 +131,7 @@ class IntegratedModelV2(nn.Module):
         self.swin_blocks_1 = nn.ModuleList([
             SwinTransformerBlock(
                 dim=2*128,
-                input_resolution=(14//2, 14//2),
+                input_resolution=(23//2, 23//2),
                 num_heads=num_heads[1],
                 window_size=swin_window_size[1],
                 shift_size=0 if i % 2 == 0 else swin_window_size[1] // 2
@@ -168,10 +168,10 @@ class IntegratedModelV2(nn.Module):
         x = self.extract_feature(self.save_output)
         self.save_output.outputs.clear()
 
-        x = x.view(batch_size, 25, 192 *self.num_features, 14, 14)
-        x = x.view(batch_size, 5, 5, 192 *self.num_features, 14, 14)
+        x = x.view(batch_size, 25, 192 *self.num_features, 28, 28)
+        x = x.view(batch_size, 5, 5, 192 *self.num_features, 28, 28)
         x = x.permute(0, 3, 1, 4, 2, 5).contiguous()
-        x = x.view(batch_size, 192 *self.num_features, 5 * 14, 5 * 14)
+        x = x.view(batch_size, 192 *self.num_features, 5 * 28, 5 * 28)
 
         x = self.patch_embedding(x)
 
