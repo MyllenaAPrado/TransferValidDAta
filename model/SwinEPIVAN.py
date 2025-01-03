@@ -119,7 +119,7 @@ class IntegratedModelV2(nn.Module):
         x_eca = self.avg_pool(x_eca)
 
 
-        x_nat = x.reshape(batch_size*3, 3, 1024, 512)     
+        x_nat = x[batch_size, 2, 3, 1024, 512].reshape(batch_size,3, 1024, 512) 
         _, s2, _, s4 = self.nat(x_nat)    
         print(s2.shape)
         print(s4.shape)
