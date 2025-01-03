@@ -112,21 +112,20 @@ class IntegratedModelV2(nn.Module):
         x = x.unfold(2, 1024, 1024).unfold(3, 512, 512).permute(0, 2, 3, 1, 4, 5).reshape(batch_size,-1, 3, 1024, 512)
         print(x.shape)
 
+        x_nat = x[:, 2, :, :, :].reshape(batch_size,3, 1024, 512) 
+        _, s2, _, s4 = self.nat(x_nat) 
+        x1 = s2.permute(0,3, 1, 2)
+        x2 = s4.permute(0,3, 1, 2)
+        x1 = self.avg_pool(x1)
+        x2 = self.avg_pool(x2)
+
         x_eca = x.reshape(batch_size, 3*3, 1024, 512)   
         x_eca = self.eca (x_eca)
         x_eca = self.conv (x_eca)
         x_eca = self.eca2 (x_eca)
         x_eca = self.avg_pool(x_eca)
 
-
-        x_nat = x[batch_size, 2, 3, 1024, 512].reshape(batch_size,3, 1024, 512) 
-        _, s2, _, s4 = self.nat(x_nat)    
-        print(s2.shape)
-        print(s4.shape)
-        x1 = s2.permute(0,3, 1, 2)
-        x2 = s4.permute(0,3, 1, 2)
-        x1 = self.avg_pool(x1)
-        x2 = self.avg_pool(x2)
+       
         print(x1.shape)
         print(x2.shape)
         print(x_eca.shape)
