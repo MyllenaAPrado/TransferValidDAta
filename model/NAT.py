@@ -13,7 +13,7 @@ from timm.models.registry import register_model
 import natten
 from natten import NeighborhoodAttention2D as NeighborhoodAttention
 from timm.models.vision_transformer import _cfg
-from mixTransformer import NatConfig
+from transformers  import NatConfig
 
 is_natten_post_017 = hasattr(natten, "context")
 
