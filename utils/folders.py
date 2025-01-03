@@ -59,7 +59,7 @@ def k_folders():
             'vI10', 'vI10_horizontal_flip', 'vI10_vertical_flip', 'vI10_vertical_horizontal_flip'
         }
 
-        folders = generate_datasets(name_folders, k=5)
+        folders = generate_datasets(name_folders, k=40)
 
     if config.dataset == 'VALID8':
         name_folders = {'I01', 'I02', 'I04', 'I09', 'I10'}
