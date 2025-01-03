@@ -85,7 +85,7 @@ class IntegratedModelV2(nn.Module):
         super(IntegratedModelV2, self).__init__()
         
         #self.nat = nat_base(pretrained=True)  
-        self.vit =  timm.create_model('vit_tiny_patch16_224', pretrained=True)
+        self.vit =  timm.create_model('vit_base_patch8_224', pretrained=True)
 
         self.save_output = SaveOutput()
 
