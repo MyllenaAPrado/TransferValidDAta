@@ -180,14 +180,14 @@ if __name__ == '__main__':
         if dataset == "VALID":
             transform_train=transforms.Compose([
                             transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
-                            transforms.CenterCrop((672, 224)),                       
+                            transforms.CenterCrop((3072, 512)),                       
                             transforms.RandomHorizontalFlip(),
                             transforms.RandomRotation(15),
                             transforms.ToTensor()
                         ])
             transform_eval =transforms.Compose([
                             transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
-                            transforms.CenterCrop((672, 224)),    
+                            transforms.CenterCrop((3072, 512)),    
                             transforms.ToTensor()
                         ]) 
             image_size = (5642, 626)  # Input image size #44,5
@@ -268,7 +268,7 @@ if __name__ == '__main__':
         model = model.to(device)
 
         ### Create three input tensors, each with shape (1, 3, 224, 224)
-        input_tensor = torch.randn(1, 1, 672, 224).to(device)  # Example input tensor
+        input_tensor = torch.randn(1, 1, 3072, 512).to(device)  # Example input tensor
         flops, params = profile(model, inputs=(input_tensor,))
         logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
         logging.info('Flops: {} '.format(flops))
