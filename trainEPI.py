@@ -268,10 +268,10 @@ if __name__ == '__main__':
         model = model.to(device)
 
         ### Create three input tensors, each with shape (1, 3, 224, 224)
-        input_tensor = torch.randn(1, 3, 3072, 512).to(device)  # Example input tensor
-        flops, params = profile(model, inputs=(input_tensor,))
-        logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
-        logging.info('Flops: {} '.format(flops))
+        #input_tensor = torch.randn(1, 3, 3072, 512).to(device)  # Example input tensor
+        #flops, params = profile(model, inputs=(input_tensor,))
+        #logging.info('{} : {} [M]'.format('#Params', sum(map(lambda x: x.numel(), model.parameters())) / 10 ** 6))
+        #logging.info('Flops: {} '.format(flops))
 
         criterion = RMSELoss() 
         optimizer = torch.optim.AdamW(
