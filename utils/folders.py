@@ -52,14 +52,14 @@ def k_folders():
             'I04', 'I04_horizontal_flip', 'I04_vertical_flip', 'I04_vertical_horizontal_flip', 
             'I09', 'I09_horizontal_flip', 'I09_vertical_flip', 'I09_vertical_horizontal_flip', 
             'I10', 'I10_horizontal_flip', 'I10_vertical_flip', 'I10_vertical_horizontal_flip', 
-            'vI01', 'vI01_horizontal_flip', 'vI01_vertical_flip', 'vI01_vertical_horizontal_flip', 
-            'vI02', 'vI02_horizontal_flip', 'vI02_vertical_flip', 'vI02_vertical_horizontal_flip', 
-            'vI04', 'vI04_horizontal_flip', 'vI04_vertical_flip', 'vI04_vertical_horizontal_flip', 
-            'vI09', 'vI09_horizontal_flip', 'vI09_vertical_flip', 'vI09_vertical_horizontal_flip', 
-            'vI10', 'vI10_horizontal_flip', 'vI10_vertical_flip', 'vI10_vertical_horizontal_flip'
+            #'vI01', 'vI01_horizontal_flip', 'vI01_vertical_flip', 'vI01_vertical_horizontal_flip', 
+            #'vI02', 'vI02_horizontal_flip', 'vI02_vertical_flip', 'vI02_vertical_horizontal_flip', 
+            #'vI04', 'vI04_horizontal_flip', 'vI04_vertical_flip', 'vI04_vertical_horizontal_flip', 
+            #'vI09', 'vI09_horizontal_flip', 'vI09_vertical_flip', 'vI09_vertical_horizontal_flip', 
+            #'vI10', 'vI10_horizontal_flip', 'vI10_vertical_flip', 'vI10_vertical_horizontal_flip'
         }
 
-        folders = generate_datasets(name_folders, k=40)
+        folders = generate_datasets(name_folders, k=20)
 
     if config.dataset == 'VALID8':
         name_folders = {'I01', 'I02', 'I04', 'I09', 'I10'}
