@@ -108,12 +108,12 @@ class IntegratedModelV2(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(2)
         self.rerange_layer = Rearrange('b c h w -> b (h w) c')
 
-        self.patch_embedding = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
+        #self.patch_embedding = nn.Conv2d(in_channels, emb_size, kernel_size=patch_size, stride=patch_size)
 
 
         # Patch embedding
         self.patch_embedding = nn.Conv2d(192 *self.num_features, 128, kernel_size=3, stride=3)
-
+        self.conv = nn.Conv2d(256, 24, kernel_size=3, stride=3)
 
         self.swin_blocks = nn.ModuleList([
             SwinTransformerBlock(
@@ -141,7 +141,7 @@ class IntegratedModelV2(nn.Module):
 
         self.regression = nn.Sequential(
             nn.Flatten(),
-            nn.Linear( 1024, 512),  
+            nn.Linear( 1176, 512),  
             nn.ELU(),
             nn.Dropout(0.1),
             nn.Linear(512, 256),
@@ -190,8 +190,9 @@ class IntegratedModelV2(nn.Module):
 
         x = self.eca(x)
         print(x.shape)
+        x = self.conv(x)
 
-        x = self.avg_pool(x)
-        print(x.shape)
+        #x = self.avg_pool(x)
+        #print(x.shape)
 
         return self.regression(x)
